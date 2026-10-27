@@ -151,12 +151,12 @@
                     <div class="w-8 h-8 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400 text-sm">🤖</div>
                     <div>
                         <h3 class="text-sm font-extrabold uppercase tracking-wider text-slate-300">AI-Belastningsveileder</h3>
-                        <p class="text-[10px] text-slate-400">Spør om søvn, belastning, sRPE eller restitusjon</p>
+                        <p class="text-[10px] text-slate-400">Spør om søvn, mat, drikke, belastning eller restitusjon</p>
                     </div>
                 </div>
                 
                 <div class="space-y-3">
-                    <textarea id="aiQuestionInput" rows="2" placeholder="F.eks. Er det lurt å trene i dag hvis jeg sov lite og er støl?" class="w-full bg-slate-950 border border-slate-800 rounded-2xl p-3 text-xs font-semibold text-white focus:border-emerald-500 focus:outline-none transition resize-none"></textarea>
+                    <textarea id="aiQuestionInput" rows="2" placeholder="F.eks. Hva bør jeg spise før kamp? Eller er jeg for sliten i dag?" class="w-full bg-slate-950 border border-slate-800 rounded-2xl p-3 text-xs font-semibold text-white focus:border-emerald-500 focus:outline-none transition resize-none"></textarea>
                     <button type="button" onclick="askAiAgent()" class="w-full bg-slate-800 hover:bg-slate-700 text-emerald-400 font-extrabold py-2.5 rounded-2xl text-xs uppercase tracking-wider transition border border-slate-700 flex items-center justify-center gap-2">
                         <span>Spør Veilederen</span>
                     </button>
@@ -222,7 +222,7 @@
                     <h2 class="text-sm font-extrabold uppercase tracking-wider text-slate-300">Troppsoversikt (7-Dagers sRPE)</h2>
                     <button type="button" onclick="loadSquadOverview()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-xl font-bold border border-slate-700 transition">🔄 Oppdater</button>
                 </div>
-                <p class="text-xs text-slate-400">Akkumulert belastning siste 7 dager per utøver:</p>
+                <p class="text-xs text-slate-400">Akkumulert belastning, søvn og dagsform siste 7 dager:</p>
                 <div id="squadList" class="space-y-2.5">
                     <div class="text-xs text-slate-500 italic p-3 text-center bg-slate-950 rounded-2xl border border-slate-800">Laster utøvere...</div>
                 </div>
@@ -444,14 +444,16 @@
 
             setTimeout(() => {
                 const q = input.toLowerCase();
-                let answer = "For å opprettholde en god utvikling uten overbelastning, bør du lytte til kroppen. Sørg for tilstrekkelig med søvn (8+ timer) og få i deg nok væske og mat etter treningsøkter.";
+                let answer = "For å opprettholde en god utvikling uten overbelastning, bør du lytte til kroppen. Sørg for tilstrekkelig med søvn (8+ timer), riktig ernæring og nok væske etter treningsøkter.";
 
                 if (q.includes("søvn") || q.includes("trøtt") || q.includes("sove")) {
-                    answer = "God søvn er den aller viktigste faktoren for restitusjon! Hvis du har sovet lite, bør du vurdere en litt lettere økt eller ekstra fokus på hvile slik at du unngår overbelastning.";
+                    answer = "God søvn er den aller viktigste faktoren for restitusjon! Hvis du har sovet lite, bør du vurdere en litt lettere økt eller ekstra fokus på hvile.";
                 } else if (q.includes("smerte") || q.includes("støl") || q.includes("vondt")) {
-                    answer = "Kjenner du på smerte eller ubehag, er det kroppens signal om å ta et steg tilbake. Lett aktivitet (bevegelse uten motstand) kan hjelpe mot stølhet, men skarp smerte krever hvile.";
+                    answer = "Kjenner du på smerte eller ubehag, er det kroppens signal om å ta et steg tilbake. Stølhet kan mykes opp med lett bevegelse, men skarp smerte krever hvile.";
+                } else if (q.includes("mat") || q.includes("spise") || q.includes("energi")) {
+                    answer = "Spis et godt karbohydratrikt måltid 2-3 timer før trening og få i deg litt proteiner og raske karbohydrater etter økten.";
                 } else if (q.includes("kamp") || q.includes("hard") || q.includes("trene i dag")) {
-                    answer = "Sjekk ukesbelastningen din i oversikten her. Hvis sRPE-summen din nærmer seg grensen, kan det være lurt å holde igjen på intensiteten på dagens økt.";
+                    answer = "Sjekk ukesbelastningen din i oversikten. Hvis sRPE-summen nærmer seg grensen, kan det være lurt å roe ned på intensiteten.";
                 }
 
                 respText.innerText = answer;
@@ -610,34 +612,45 @@
             }
 
             const sessions = getLocalSessions();
-            const totals = {};
             const now = new Date();
             const sevenDaysAgo = new Date(now.setDate(now.getDate() - 7));
 
+            // Grupper økter per utøver for de siste 7 dagene
+            const playerStats = {};
+            tokenKeys.forEach(token => {
+                playerStats[token] = { name: tokens[token], totalSrpe: 0, lastSleep: '--', lastBody: '--' };
+            });
+
             sessions.forEach(s => {
                 const sessionDate = new Date(s.date);
-                if (sessionDate >= sevenDaysAgo && s.playerToken) {
-                    totals[s.playerToken] = (totals[s.playerToken] || 0) + (s.srpe || 0);
+                if (sessionDate >= sevenDaysAgo && s.playerToken && playerStats[s.playerToken]) {
+                    playerStats[s.playerToken].totalSrpe += (s.srpe || 0);
+                    if(s.sleep) playerStats[s.playerToken].lastSleep = s.sleep + 't';
+                    if(s.body) playerStats[s.playerToken].lastBody = s.body;
                 }
             });
 
             let html = "";
             tokenKeys.forEach(token => {
-                const pName = tokens[token];
-                const pSrpe = totals[token] || 0;
-
-                let statusBadge = `<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-extrabold px-2.5 py-1 rounded-xl">Optimal (${pSrpe})</span>`;
-                if (pSrpe > maxWeekly) {
-                    statusBadge = `<span class="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-extrabold px-2.5 py-1 rounded-xl">Høy (${pSrpe})</span>`;
+                const p = playerStats[token];
+                let statusBadge = `<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-extrabold px-2 py-1 rounded-xl">Optimal (${p.totalSrpe})</span>`;
+                if (p.totalSrpe > maxWeekly) {
+                    statusBadge = `<span class="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-extrabold px-2 py-1 rounded-xl">Høy (${p.totalSrpe})</span>`;
                 }
 
                 html += `
-                    <div class="flex justify-between items-center p-3.5 bg-slate-950 rounded-2xl border border-slate-800 text-xs">
-                        <div>
-                            <span class="font-extrabold text-white block">${pName}</span>
-                            <span class="text-[10px] font-mono text-slate-500">?token=${token}</span>
+                    <div class="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 text-xs space-y-2">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <span class="font-extrabold text-white text-sm block">${p.name}</span>
+                                <span class="text-[10px] font-mono text-slate-500">?token=${token}</span>
+                            </div>
+                            <div>${statusBadge}</div>
                         </div>
-                        <div>${statusBadge}</div>
+                        <div class="flex gap-4 pt-1 border-t border-slate-900 text-[11px] text-slate-400">
+                            <span>💤 Søvn (siste): <strong class="text-slate-200">${p.lastSleep}</strong></span>
+                            <span>🩺 Form: <strong class="text-slate-200">${p.lastBody}</strong></span>
+                        </div>
                     </div>
                 `;
             });
@@ -669,7 +682,6 @@
                     firebase.initializeApp(firebaseConfig);
                     db = firebase.firestore();
 
-                    // Hent aktiviteter fra skyen og synkroniser til lokal enhet ved oppstart
                     db.collection("activities").get().then((querySnapshot) => {
                         let cloudSessions = [];
                         querySnapshot.forEach((doc) => { cloudSessions.push(doc.data()); });
