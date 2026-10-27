@@ -283,4 +283,117 @@
                 </div>
                 <p class="text-xs text-slate-400">Akkumulert belastning, søvn og dagsform siste 7 dager:</p>
                 <div id="squadList" class="space-y-2.5">
-                    <div class="text-xs text-slate-50
+                    <div class="text-xs text-slate-500 italic p-3 text-center bg-slate-950 rounded-2xl border border-slate-800">Laster utøvere...</div>
+                </div>
+            </div>
+
+            <!-- Administrer Utøverlenker -->
+            <div class="bg-slate-900/90 border border-slate-800/80 p-5 rounded-3xl shadow-xl backdrop-blur-sm space-y-4">
+                <h3 class="text-sm font-extrabold uppercase tracking-wider text-slate-300 border-b border-slate-800 pb-3">Generer Ny Utøverlenke</h3>
+                <p class="text-xs text-slate-400">Skriv inn fornavn for å lage en unikt låst lenke (`?token=...`).</p>
+
+                <div class="space-y-3 pt-1">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Utøverens Fornavn</label>
+                        <input type="text" id="newPlayerName" placeholder="f.eks. Navn" class="w-full bg-slate-950 border border-slate-800 rounded-2xl p-3 text-xs font-semibold text-white focus:border-emerald-500 focus:outline-none transition">
+                    </div>
+                    <button type="button" onclick="generatePlayerToken()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold py-3.5 rounded-2xl text-xs uppercase tracking-wider transition shadow-lg shadow-emerald-500/20">
+                        Opprett Ny Utøverlenke
+                    </button>
+                </div>
+
+                <div id="generatedLinkContainer" class="hidden p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-xs space-y-2.5">
+                    <span class="font-bold text-emerald-300 block">Klar til å deles på Spond/Melding:</span>
+                    <input type="text" id="generatedLinkOutput" readonly class="w-full bg-slate-950 border border-emerald-500/30 p-2.5 rounded-xl text-[11px] font-mono text-emerald-200 select-all">
+                    <button type="button" onclick="copyGeneratedLink()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold py-2 rounded-xl text-xs uppercase tracking-wider transition">
+                        Kopier Lenke
+                    </button>
+                </div>
+            </div>
+
+            <!-- Lag-grenser -->
+            <div class="bg-slate-900/90 border border-slate-800/80 p-5 rounded-3xl shadow-xl backdrop-blur-sm space-y-4">
+                <h3 class="text-sm font-extrabold uppercase tracking-wider text-slate-300 border-b border-slate-800 pb-3">Standard Ukesgrenser</h3>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Maks sRPE per uke (Advarsel-grense)</label>
+                        <input type="number" id="cfgMaxWeekly" value="3000" class="w-full bg-slate-950 border border-slate-800 rounded-2xl p-3 text-xs font-semibold text-white focus:border-emerald-500 focus:outline-none transition">
+                    </div>
+                    <button type="button" onclick="saveGlobalConfig()" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-extrabold py-3 rounded-2xl text-xs uppercase tracking-wider transition border border-slate-700">
+                        Lagre Grenser
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- FOOTER / VERSJONSINFO -->
+        <footer class="mt-8 pt-4 border-t border-slate-900 text-center text-[11px] text-slate-500 space-y-1">
+            <p class="font-semibold text-slate-400">Fotballbelastning <span class="text-emerald-400 font-mono">v1.2.2</span></p>
+            <p>Utviklet for FL Fart • Utvikler RAH</p>
+            <p class="text-[10px] text-slate-600">Firebase & GitHub Pages</p>
+        </footer>
+
+    </main>
+
+    <script>
+        const TRENER_PIN = "9482";
+        let isTrenerUnlocked = false;
+        let activePlayerName = "";
+        let activePlayerToken = "";
+        let db = null;
+
+        function byttTab(tab) {
+            const tabSpiller = document.getElementById('tabSpiller');
+            const tabTrener = document.getElementById('tabTrener');
+            const tabTrenerPin = document.getElementById('tabTrenerPin');
+            const btnSpiller = document.getElementById('btnTabSpiller');
+            const btnTrener = document.getElementById('btnTabTrener');
+
+            if (tab === 'spiller') {
+                tabSpiller.classList.remove('hidden');
+                tabTrener.classList.add('hidden');
+                tabTrenerPin.classList.add('hidden');
+                btnSpiller.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-500 text-slate-950 shadow-md transition-all";
+                btnTrener.className = "px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-all";
+            } else {
+                tabSpiller.classList.add('hidden');
+                btnTrener.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-500 text-slate-950 shadow-md transition-all";
+                btnSpiller.className = "px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-all";
+
+                if (isTrenerUnlocked) {
+                    tabTrener.classList.remove('hidden');
+                    tabTrenerPin.classList.add('hidden');
+                    syncAndRefreshSquad();
+                } else {
+                    tabTrenerPin.classList.remove('hidden');
+                    tabTrener.classList.add('hidden');
+                }
+            }
+        }
+
+        function toggleInfoBox() {
+            const content = document.getElementById('infoBoxContent');
+            const icon = document.getElementById('infoBoxToggleIcon');
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                icon.innerText = "Lukk ▴";
+            } else {
+                content.classList.add('hidden');
+                icon.innerText = "Vis mer ▾";
+            }
+        }
+
+        function verifyPin() {
+            const input = document.getElementById('pinInput').value.trim();
+            const err = document.getElementById('pinError');
+            if (input === TRENER_PIN) {
+                isTrenerUnlocked = true;
+                err.classList.add('hidden');
+                document.getElementById('tabTrenerPin').classList.add('hidden');
+                document.getElementById('tabTrener').classList.remove('hidden');
+                syncAndRefreshSquad();
+            } else {
+                err.classList.remove('hidden');
+            }
+        }
