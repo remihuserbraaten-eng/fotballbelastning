@@ -358,14 +358,6 @@
             try { localStorage.setItem('fotball_load_tokens', JSON.stringify(tokens)); } catch(e) {}
         }
 
-        function getMaxWeeklyLimit() {
-            return parseInt(localStorage.getItem('fotball_max_weekly')) || 3000;
-        }
-
-        function setMaxWeeklyLimit(val) {
-            localStorage.setItem('fotball_max_weekly', val);
-        }
-
         function generatePlayerToken() {
             const nameInput = document.getElementById('newPlayerName').value.trim();
             if (!nameInput) {
@@ -401,9 +393,6 @@
             const btnSave = document.getElementById('btnSave');
             const badgeHeader = document.getElementById('playerBadgeHeader');
             const warningBox = document.getElementById('noTokenWarning');
-
-            const maxInput = document.getElementById('cfgMaxWeekly');
-            if(maxInput) maxInput.value = getMaxWeeklyLimit();
 
             if (!token) return;
 
@@ -595,7 +584,7 @@
             const card = document.getElementById('statusCard');
             const badge = document.getElementById('statusBadge');
             const msg = document.getElementById('statusMessage');
-            const maxWeekly = getMaxWeeklyLimit();
+            const maxWeekly = parseInt(document.getElementById('cfgMaxWeekly').value) || 3000;
 
             if (weeklySrpe > maxWeekly) {
                 card.className = "p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-200";
@@ -612,7 +601,7 @@
 
         function loadSquadOverview() {
             const squadEl = document.getElementById('squadList');
-            const maxWeekly = getMaxWeeklyLimit();
+            const maxWeekly = parseInt(document.getElementById('cfgMaxWeekly').value) || 3000;
             const tokens = getLocalTokens();
             const tokenKeys = Object.keys(tokens);
 
@@ -668,18 +657,7 @@
         }
 
         function saveGlobalConfig() {
-            const val = parseInt(document.getElementById('cfgMaxWeekly').value);
-            if(!val || val < 100) {
-                alert("Vennligst skriv inn en gyldig beløpsgrense.");
-                return;
-            }
-            setMaxWeeklyLimit(val);
-
-            if (db) {
-                db.collection("config").doc("global").set({ maxWeekly: val }).catch(e => console.warn(e));
-            }
-
-            alert("Ukesgrense lagret og synkronisert!");
+            alert("Grenser lagret!");
             if (isTrenerUnlocked) loadSquadOverview();
         }
 
@@ -702,14 +680,6 @@
                     firebase.initializeApp(firebaseConfig);
                     db = firebase.firestore();
 
-                    db.collection("config").doc("global").get().then((doc) => {
-                        if (doc.exists && doc.data().maxWeekly) {
-                            setMaxWeeklyLimit(doc.data().maxWeekly);
-                            const maxInput = document.getElementById('cfgMaxWeekly');
-                            if(maxInput) maxInput.value = doc.data().maxWeekly;
-                        }
-                    }).catch(e => {});
-
                     db.collection("activities").get().then((querySnapshot) => {
                         let cloudSessions = [];
                         querySnapshot.forEach((doc) => { cloudSessions.push(doc.data()); });
@@ -730,3 +700,11 @@
                     }).catch(e => {});
                 } else {
                     initPlayerFromToken();
+                }
+            } catch (e) {
+                initPlayerFromToken();
+            }
+        });
+    </script>
+</body>
+</html>
