@@ -197,6 +197,41 @@
                 </div>
             </div>
 
+            <!-- Om Fotballbelastning & Retningslinjer (Kollapsbar Infoboks) -->
+            <div class="bg-slate-900/90 border border-slate-800/80 p-5 rounded-3xl shadow-xl backdrop-blur-sm space-y-3">
+                <button type="button" onclick="toggleInfoBox()" class="w-full flex justify-between items-center text-left">
+                    <div class="flex items-center space-x-2">
+                        <span class="text-emerald-400 text-sm">ℹ️</span>
+                        <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-300">Om Fotballbelastning &amp; Retningslinjer</h3>
+                    </div>
+                    <span id="infoBoxToggleIcon" class="text-xs font-bold text-slate-400 bg-slate-800 px-2 py-1 rounded-lg border border-slate-700">Vis mer ▾</span>
+                </button>
+
+                <div id="infoBoxContent" class="hidden space-y-3.5 pt-3 border-t border-slate-800/80 text-xs text-slate-300 leading-relaxed">
+                    <!-- Medisinsk ansvarsfraskrivelse -->
+                    <div class="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-200/90 space-y-1">
+                        <span class="font-extrabold text-[11px] uppercase tracking-wider text-amber-400 block">⚠️ Medisinsk ansvarsfraskrivelse</span>
+                        <p class="text-[11px]">Dette verktøyet er ment som en støtte til å kartlegge treningsbelastning og hvile. Det erstatter ikke medisinsk rådgivning eller vurdering fra helsepersonell. Ved akutte smerter, skader eller ubehag skal du alltid gi beskjed til trener/foreldre og ta kontakt med lege eller fysioterapeut.</p>
+                    </div>
+
+                    <!-- Forklaring på sRPE -->
+                    <div class="p-3 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
+                        <span class="font-extrabold text-[11px] uppercase tracking-wider text-emerald-400 block">💡 Hva er sRPE?</span>
+                        <p class="text-[11px] text-slate-400">sRPE står for <em>Session Rating of Perceived Exertion</em>. Det regnes ut ved å multiplisere varigheten (minutter) med hvor hard økten føltes (1–10). Målet er å hjelpe deg og trenerne med å finne en trygg balanse mellom hard trening, kamper og god restitusjon.</p>
+                    </div>
+
+                    <!-- Tips til utfylling -->
+                    <div class="p-3 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
+                        <span class="font-extrabold text-[11px] uppercase tracking-wider text-teal-400 block">📝 Tips til god utfylling</span>
+                        <ul class="text-[11px] text-slate-400 list-disc list-inside space-y-1 pt-0.5">
+                            <li>Vær helt ærlig! Det finnes ingen "feil" RPE-score.</li>
+                            <li>Svar ut fra din egen opplevelse, ikke hva medspillerne syntes.</li>
+                            <li>Registrer økten kort tid etter at den er ferdig så du husker dagsformen best mulig.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
         <!-- PIN-LÅS SKJERM FOR TRENER -->
@@ -303,6 +338,18 @@
                     tabTrenerPin.classList.remove('hidden');
                     tabTrener.classList.add('hidden');
                 }
+            }
+        }
+
+        function toggleInfoBox() {
+            const content = document.getElementById('infoBoxContent');
+            const icon = document.getElementById('infoBoxToggleIcon');
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                icon.innerText = "Lukk ▴";
+            } else {
+                content.classList.add('hidden');
+                icon.innerText = "Vis mer ▾";
             }
         }
 
