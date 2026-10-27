@@ -329,7 +329,7 @@
 
         <!-- FOOTER / VERSJONSINFO -->
         <footer class="mt-8 pt-4 border-t border-slate-900 text-center text-[11px] text-slate-500 space-y-1">
-            <p class="font-semibold text-slate-400">Fotballbelastning <span class="text-emerald-400 font-mono">v1.2.2</span></p>
+            <p class="font-semibold text-slate-400">Fotballbelastning <span class="text-emerald-400 font-mono">v1.0.0</span></p>
             <p>Utviklet for FL Fart • Utvikler RAH</p>
             <p class="text-[10px] text-slate-600">Firebase & GitHub Pages</p>
         </footer>
@@ -397,3 +397,521 @@
                 err.classList.remove('hidden');
             }
         }
+
+        function updateRpeDisplay(val) {
+            const labels = {
+                1: "1 - Veldig lett", 2: "2 - Lett", 3: "3 - Moderat", 4: "4 - Middels +",
+                5: "5 - Middels", 6: "6 - Litt hard", 7: "7 - Hard", 8: "8 - Meget hard",
+                9: "9 - Svært anstrengende", 10: "10 - Maksimalt"
+            };
+            document.getElementById('rpeValueDisplay').innerText = labels[val] || val;
+            calculateLiveSrpe();
+        }
+
+        function calculateLiveSrpe() {
+            const dur = parseInt(document.getElementById('duration').value) || 0;
+            const rpe = parseInt(document.getElementById('rpeScore').value) || 0;
+            const srpe = dur * rpe;
+            document.getElementById('calculatedSrpe').innerText = srpe + " sRPE";
+            return srpe;
+        }
+
+        function getLocalSessions() {
+            try { return JSON.parse(localStorage.getItem('fotball_load_sessions') || '[]'); } catch(e) { return []; }
+        }
+
+        function saveAllLocalSessions(sessions) {
+            try { localStorage.setItem('fotball_load_sessions', JSON.stringify(sessions)); } catch(e) {}
+        }
+
+        function getLocalTokens() {
+            try { return JSON.parse(localStorage.getItem('fotball_load_tokens') || '{}'); } catch(e) { return {}; }
+        }
+
+        function saveLocalToken(token, name) {
+            const tokens = getLocalTokens();
+            tokens[token] = name;
+            try { localStorage.setItem('fotball_load_tokens', JSON.stringify(tokens)); } catch(e) {}
+        }
+
+        function generatePlayerToken() {
+            const nameInput = document.getElementById('newPlayerName').value.trim();
+            if (!nameInput) {
+                alert("Vennligst skriv inn fornavn på utøveren.");
+                return;
+            }
+            const randomToken = Math.random().toString(36).substring(2, 10);
+            const baseUrl = window.location.origin + window.location.pathname;
+            const fullLink = baseUrl + "?token=" + randomToken;
+
+            saveLocalToken(randomToken, nameInput);
+
+            if (db) {
+                db.collection("tokens").doc(randomToken).set({ playerName: nameInput }).catch(e => console.warn(e));
+            }
+
+            document.getElementById('generatedLinkOutput').value = fullLink;
+            document.getElementById('generatedLinkContainer').classList.remove('hidden');
+            document.getElementById('newPlayerName').value = "";
+            loadSquadOverview();
+        }
+
+        function copyGeneratedLink() {
+            const copyText = document.getElementById("generatedLinkOutput");
+            copyText.select();
+            navigator.clipboard.writeText(copyText.value);
+            alert("Lenke kopiert!");
+        }
+
+        function initPlayerFromToken() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+            const btnSave = document.getElementById('btnSave');
+            const badgeHeader = document.getElementById('playerBadgeHeader');
+            const warningBox = document.getElementById('noTokenWarning');
+
+            if (!token) return;
+
+            const localTokens = getLocalTokens();
+            if (localTokens[token]) {
+                activePlayerName = localTokens[token];
+                activePlayerToken = token;
+                setupPlayerUI(badgeHeader, warningBox, btnSave);
+                return;
+            }
+
+            if (db) {
+                db.collection("tokens").doc(token).get().then((doc) => {
+                    if (doc.exists) {
+                        activePlayerName = doc.data().playerName;
+                        activePlayerToken = token;
+                        saveLocalToken(token, activePlayerName);
+                        setupPlayerUI(badgeHeader, warningBox, btnSave);
+                    }
+                }).catch(err => console.error(err));
+            }
+        }
+
+        function setupPlayerUI(badgeHeader, warningBox, btnSave) {
+            badgeHeader.innerText = "Utøver: " + activePlayerName;
+            badgeHeader.className = "text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1 rounded-full";
+            if (warningBox) warningBox.classList.add('hidden');
+            
+            btnSave.disabled = false;
+            btnSave.className = "w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold py-3.5 px-4 rounded-2xl text-xs uppercase tracking-wider transition shadow-lg shadow-emerald-500/20 active:scale-[0.98]";
+            btnSave.innerText = "Lagre Økt for " + activePlayerName;
+
+            loadRecentSessions(activePlayerToken);
+        }
+
+        function quickAiQuestion(qText) {
+            document.getElementById('aiQuestionInput').value = qText;
+            askAiAgent();
+        }
+
+        function askAiAgent() {
+            const input = document.getElementById('aiQuestionInput').value.trim();
+            const respBox = document.getElementById('aiResponseBox');
+            const respText = document.getElementById('aiResponseText');
+
+            if (!input) {
+                alert("Vennligst skriv et spørsmål eller velg et av hurtigspørsmålene.");
+                return;
+            }
+
+            respBox.classList.remove('hidden');
+            respText.innerText = "Tenker og analyserer belastning...";
+
+            setTimeout(() => {
+                const q = input.toLowerCase();
+                let answer = "For å opprettholde en god utvikling uten overbelastning, bør du lytte til kroppen. Sørg for tilstrekkelig med søvn (8+ timer), riktig ernæring og nok væske etter treningsøkter.";
+
+                if (q.includes("søvn") || q.includes("trøtt") || q.includes("sove")) {
+                    answer = "God søvn er den aller viktigste faktoren for restitusjon! Ungdomsspillere bør sikte mot 8–10 timer søvn per natt. Har du sovet lite, bør du vurdere en litt lettere økt.";
+                } else if (q.includes("smerte") || q.includes("støl") || q.includes("vondt") || q.includes("ubehag")) {
+                    answer = "Kjenner du på skarp smerte eller ubehag, er det kroppens signal om å ta et steg tilbake. Vanlig stølhet kan mykes opp med lett bevegelse, men ved vondt bør du hvile og gi beskjed til trener.";
+                } else if (q.includes("mat") || q.includes("spise") || q.includes("energi")) {
+                    answer = "Spis et godt karbohydratrikt måltid (f.eks. havregrøt, brød eller pasta) 2-3 timer før trening. Få i deg litt proteiner og raske karbohydrater (f.eks. banan og melk) innen 30 minutter etter økten.";
+                } else if (q.includes("kamp") || q.includes("hard") || q.includes("ukebelastning") || q.includes("srpe")) {
+                    answer = "Sjekk ukesbelastningen din i stolpegrafen. Hvis ukes-summen stiger brått eller overstiger lagets anbefalte grense, kan det være lurt med en roligere økt eller ekstra hvile.";
+                }
+
+                respText.innerText = answer;
+            }, 500);
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            if (!activePlayerToken) {
+                alert("Vennligst åpne din personlige utøverlenke for å lagre økter.");
+                return;
+            }
+
+            const editingId = document.getElementById('editingSessionId').value;
+            const date = document.getElementById('sessionDate').value;
+            const duration = parseInt(document.getElementById('duration').value);
+            const rpe = parseInt(document.getElementById('rpeScore').value);
+            const activity = document.getElementById('activityType').value;
+            const sleep = document.getElementById('sleepHours').value;
+            const body = document.getElementById('bodyStatus').value;
+            const srpe = duration * rpe;
+
+            let sessions = getLocalSessions();
+
+            if (editingId) {
+                const idx = sessions.findIndex(s => s.id === editingId || s.timestamp === editingId);
+                if (idx !== -1) {
+                    sessions[idx].date = date;
+                    sessions[idx].duration = duration;
+                    sessions[idx].rpe = rpe;
+                    sessions[idx].activity = activity;
+                    sessions[idx].sleep = sleep;
+                    sessions[idx].body = body;
+                    sessions[idx].srpe = srpe;
+
+                    if (db) {
+                        db.collection("activities").doc(editingId).update({
+                            date, duration, rpe, activity, sleep, body, srpe
+                        }).catch(err => console.warn(err));
+                    }
+                }
+                cancelEditing();
+                alert("Økten din er oppdatert!");
+            } else {
+                const newId = "session_" + Date.now();
+                const sessionObj = {
+                    id: newId,
+                    playerToken: activePlayerToken,
+                    playerName: activePlayerName,
+                    date: date,
+                    duration: duration,
+                    rpe: rpe,
+                    activity: activity,
+                    sleep: sleep,
+                    body: body,
+                    srpe: srpe,
+                    timestamp: new Date().toISOString()
+                };
+
+                sessions.push(sessionObj);
+
+                if (db) {
+                    db.collection("activities").doc(newId).set(sessionObj).catch(e => console.warn(e));
+                }
+                alert("Økten din er lagret!");
+            }
+
+            saveAllLocalSessions(sessions);
+            document.getElementById('duration').value = "";
+            document.getElementById('sleepHours').value = "";
+            calculateLiveSrpe();
+            loadRecentSessions(activePlayerToken);
+        }
+
+        function editSession(id) {
+            const sessions = getLocalSessions();
+            const s = sessions.find(item => item.id === id || item.timestamp === id);
+            if (!s) return;
+
+            document.getElementById('editingSessionId').value = id;
+            document.getElementById('sessionDate').value = s.date;
+            document.getElementById('duration').value = s.duration;
+            document.getElementById('activityType').value = s.activity;
+            document.getElementById('rpeScore').value = s.rpe;
+            updateRpeDisplay(s.rpe);
+            document.getElementById('sleepHours').value = s.sleep || "";
+            document.getElementById('bodyStatus').value = s.body || "Alt topp";
+
+            document.getElementById('formHeaderTitle').innerText = "Rediger Økt";
+            document.getElementById('btnSave').innerText = "Oppdater Økt";
+            document.getElementById('btnCancelEdit').classList.remove('hidden');
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function cancelEditing() {
+            document.getElementById('editingSessionId').value = "";
+            document.getElementById('formHeaderTitle').innerText = "Registrer Økt";
+            const btnSave = document.getElementById('btnSave');
+            btnSave.innerText = "Lagre Økt for " + activePlayerName;
+            document.getElementById('btnCancelEdit').classList.add('hidden');
+            document.getElementById('duration').value = "";
+            document.getElementById('sleepHours').value = "";
+            document.getElementById('sessionDate').valueAsDate = new Date();
+            calculateLiveSrpe();
+        }
+
+        function deleteSession(id) {
+            if (!confirm("Er du sikker på at du vil slette denne økten?")) return;
+
+            let sessions = getLocalSessions();
+            sessions = sessions.filter(s => s.id !== id && s.timestamp !== id);
+            saveAllLocalSessions(sessions);
+
+            if (db) {
+                db.collection("activities").doc(id).delete().catch(err => console.warn(err));
+            }
+
+            loadRecentSessions(activePlayerToken);
+        }
+
+        function loadRecentSessions(token) {
+            const listEl = document.getElementById('recentSessionsList');
+            const allSessions = getLocalSessions().filter(s => s.playerToken === token);
+            
+            let html = "";
+            let totalWeeklySrpe = 0;
+            const now = new Date();
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(now.getDate() - 7);
+
+            let dailyTotals = [0, 0, 0, 0, 0, 0, 0];
+            let dayLabels = [];
+
+            for (let i = 6; i >= 0; i--) {
+                let d = new Date();
+                d.setDate(d.getDate() - i);
+                dayLabels.push(d.toLocaleDateString('no-NO', { weekday: 'short' }).slice(0, 2));
+            }
+
+            allSessions.slice(-20).reverse().forEach(data => {
+                const sessionDate = new Date(data.date);
+                if (sessionDate >= sevenDaysAgo) {
+                    totalWeeklySrpe += (data.srpe || 0);
+
+                    const diffTime = Math.abs(new Date() - sessionDate);
+                    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                    if (diffDays <= 6) {
+                        const index = 6 - diffDays;
+                        dailyTotals[index] += (data.srpe || 0);
+                    }
+                }
+
+                let extraInfo = "";
+                if(data.sleep || data.body) {
+                    extraInfo = `<span class="text-[10px] text-slate-400 block mt-0.5">Søvn: ${data.sleep || '--'}t | Form: ${data.body || '--'}</span>`;
+                }
+
+                const sId = data.id || data.timestamp;
+
+                html += `
+                    <div class="p-3 bg-slate-950 rounded-2xl border border-slate-800 text-xs space-y-2">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <span class="font-extrabold text-white">${data.activity}</span>
+                                <span class="text-slate-400 text-[11px] block">${data.date} (${data.duration} min × RPE ${data.rpe})</span>
+                                ${extraInfo}
+                            </div>
+                            <span class="font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-xl">${data.srpe} sRPE</span>
+                        </div>
+                        <div class="flex justify-end gap-2 pt-1 border-t border-slate-900 text-[10px]">
+                            <button type="button" onclick="editSession('${sId}')" class="text-slate-400 hover:text-emerald-400 font-bold px-2 py-0.5 rounded bg-slate-900 border border-slate-800">✏️ Rediger</button>
+                            <button type="button" onclick="deleteSession('${sId}')" class="text-red-400 hover:text-red-300 font-bold px-2 py-0.5 rounded bg-slate-900 border border-slate-800">🗑️ Slett</button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            listEl.innerHTML = html || '<div class="text-xs text-slate-500 italic p-3 text-center bg-slate-950 rounded-2xl border border-slate-800">Ingen registreringer ennå.</div>';
+            document.getElementById('weeklyTotalDisplay').innerText = totalWeeklySrpe + " sRPE";
+            updateStatusCard(totalWeeklySrpe);
+            renderWeeklyChart(dailyTotals, dayLabels);
+        }
+
+        function renderWeeklyChart(totals, labels) {
+            const container = document.getElementById('weeklyChartContainer');
+            const labelContainer = document.getElementById('chartDaysLabel');
+            
+            const maxVal = Math.max(...totals, 500);
+
+            let chartHtml = "";
+            let labelHtml = "";
+
+            totals.forEach((val, i) => {
+                const heightPercent = Math.min(Math.round((val / maxVal) * 100), 100);
+                const barColor = val > 400 ? 'bg-amber-400 shadow-lg shadow-amber-400/20' : 'bg-emerald-400 shadow-lg shadow-emerald-400/20';
+
+                chartHtml += `
+                    <div class="flex-1 flex flex-col items-center justify-end h-full group relative">
+                        <div class="absolute -top-7 bg-slate-900 border border-slate-700 text-emerald-300 text-[10px] font-black px-2 py-0.5 rounded-lg opacity-0 group-hover:opacity-100 transition pointer-events-none">${val}</div>
+                        <div class="w-full max-w-[22px] ${barColor} rounded-t-lg transition-all duration-300" style="height: ${heightPercent}%"></div>
+                    </div>
+                `;
+                labelHtml += `<span class="flex-1 text-center">${labels[i]}</span>`;
+            });
+
+            container.innerHTML = chartHtml;
+            labelContainer.innerHTML = labelHtml;
+        }
+
+        function updateStatusCard(weeklySrpe) {
+            const card = document.getElementById('statusCard');
+            const badge = document.getElementById('statusBadge');
+            const msg = document.getElementById('statusMessage');
+            const maxWeekly = parseInt(document.getElementById('cfgMaxWeekly').value) || 3000;
+
+            if (weeklySrpe > maxWeekly) {
+                card.className = "p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-200";
+                badge.className = "bg-amber-500/20 text-amber-300 text-[10px] font-bold px-3 py-1 rounded-full border border-amber-500/30";
+                badge.innerText = "Høy Belastning";
+                msg.innerText = "Ukesbelastningen overstiger anbefalt grense (" + maxWeekly + " sRPE). Vurder hviledag.";
+            } else {
+                card.className = "p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-200";
+                badge.className = "bg-emerald-500/20 text-emerald-300 text-[10px] font-bold px-3 py-1 rounded-full border border-emerald-500/30";
+                badge.innerText = "Optimal";
+                msg.innerText = "Belastningen er innenfor trygge rammer.";
+            }
+        }
+
+        function syncAndRefreshSquad() {
+            const spinner = document.getElementById('refreshSpinner');
+            if (spinner) spinner.classList.add('animate-spin');
+
+            if (db) {
+                Promise.all([
+                    db.collection("activities").get(),
+                    db.collection("tokens").get()
+                ]).then(([actSnap, tokSnap]) => {
+                    let cloudSessions = [];
+                    actSnap.forEach((doc) => { 
+                        let d = doc.data();
+                        d.id = doc.id;
+                        cloudSessions.push(d); 
+                    });
+                    if (cloudSessions.length > 0) {
+                        saveAllLocalSessions(cloudSessions);
+                    }
+
+                    let cloudTokens = {};
+                    tokSnap.forEach((doc) => { cloudTokens[doc.id] = doc.data().playerName; });
+                    if (Object.keys(cloudTokens).length > 0) {
+                        localStorage.setItem('fotball_load_tokens', JSON.stringify(cloudTokens));
+                    }
+
+                    loadSquadOverview();
+                    if (spinner) spinner.classList.remove('animate-spin');
+                }).catch(err => {
+                    console.warn(err);
+                    loadSquadOverview();
+                    if (spinner) spinner.classList.remove('animate-spin');
+                });
+            } else {
+                loadSquadOverview();
+                if (spinner) spinner.classList.remove('animate-spin');
+            }
+        }
+
+        function loadSquadOverview() {
+            const squadEl = document.getElementById('squadList');
+            const maxWeekly = parseInt(document.getElementById('cfgMaxWeekly').value) || 3000;
+            const tokens = getLocalTokens();
+            const tokenKeys = Object.keys(tokens);
+
+            if (tokenKeys.length === 0) {
+                squadEl.innerHTML = '<div class="text-xs text-slate-500 italic p-3 text-center bg-slate-950 rounded-2xl border border-slate-800">Ingen utøverlenker opprettet ennå.</div>';
+                return;
+            }
+
+            const sessions = getLocalSessions();
+            const now = new Date();
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(now.getDate() - 7);
+
+            const playerStats = {};
+            tokenKeys.forEach(token => {
+                playerStats[token] = { name: tokens[token], totalSrpe: 0, lastSleep: '--', lastBody: '--' };
+            });
+
+            sessions.forEach(s => {
+                const sessionDate = new Date(s.date);
+                if (sessionDate >= sevenDaysAgo && s.playerToken && playerStats[s.playerToken]) {
+                    playerStats[s.playerToken].totalSrpe += (s.srpe || 0);
+                    if(s.sleep) playerStats[s.playerToken].lastSleep = s.sleep + 't';
+                    if(s.body) playerStats[s.playerToken].lastBody = s.body;
+                }
+            });
+
+            let html = "";
+            tokenKeys.forEach(token => {
+                const p = playerStats[token];
+                let statusBadge = `<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-extrabold px-2 py-1 rounded-xl">Optimal (${p.totalSrpe})</span>`;
+                if (p.totalSrpe > maxWeekly) {
+                    statusBadge = `<span class="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-extrabold px-2 py-1 rounded-xl">Høy (${p.totalSrpe})</span>`;
+                }
+
+                html += `
+                    <div class="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 text-xs space-y-2">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <span class="font-extrabold text-white text-sm block">${p.name}</span>
+                                <span class="text-[10px] font-mono text-slate-500">?token=${token}</span>
+                            </div>
+                            <div>${statusBadge}</div>
+                        </div>
+                        <div class="flex gap-4 pt-1 border-t border-slate-900 text-[11px] text-slate-400">
+                            <span>💤 Søvn (siste): <strong class="text-slate-200">${p.lastSleep}</strong></span>
+                            <span>🩺 Form: <strong class="text-slate-200">${p.lastBody}</strong></span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            squadEl.innerHTML = html;
+        }
+
+        function saveGlobalConfig() {
+            alert("Grenser lagret!");
+            if (isTrenerUnlocked) loadSquadOverview();
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const dateInput = document.getElementById('sessionDate');
+            if (dateInput) dateInput.valueAsDate = new Date();
+
+            try {
+                const firebaseConfig = {
+                    apiKey: "AIzaSyAnXYmiJaonOdK2zp4-EJCzr7cVdQhk9SY",
+                    authDomain: "fotballbelastning.firebaseapp.com",
+                    projectId: "fotballbelastning",
+                    storageBucket: "fotballbelastning.firebasestorage.app",
+                    messagingSenderId: "802585308826",
+                    appId: "1:802585308826:web:13ff88fa2ea37e540ff923",
+                    measurementId: "G-EVQDS4BDKC"
+                };
+
+                if (firebaseConfig.apiKey !== "DIN_API_KEY_HER" && typeof firebase !== 'undefined' && !firebase.apps.length) {
+                    firebase.initializeApp(firebaseConfig);
+                    db = firebase.firestore();
+
+                    db.collection("activities").get().then((querySnapshot) => {
+                        let cloudSessions = [];
+                        querySnapshot.forEach((doc) => { 
+                            let d = doc.data();
+                            d.id = doc.id;
+                            cloudSessions.push(d); 
+                        });
+                        if(cloudSessions.length > 0) {
+                            saveAllLocalSessions(cloudSessions);
+                        }
+                        initPlayerFromToken();
+                    }).catch(e => {
+                        initPlayerFromToken();
+                    });
+
+                    db.collection("tokens").get().then((querySnapshot) => {
+                        let cloudTokens = {};
+                        querySnapshot.forEach((doc) => { cloudTokens[doc.id] = doc.data().playerName; });
+                        if(Object.keys(cloudTokens).length > 0) {
+                            localStorage.setItem('fotball_load_tokens', JSON.stringify(cloudTokens));
+                        }
+                    }).catch(e => {});
+                } else {
+                    initPlayerFromToken();
+                }
+            } catch (e) {
+                initPlayerFromToken();
+            }
+        });
+    </script>
+</body>
+</html>
