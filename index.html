@@ -151,12 +151,12 @@
                     <div class="w-8 h-8 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400 text-sm">🤖</div>
                     <div>
                         <h3 class="text-sm font-extrabold uppercase tracking-wider text-slate-300">AI-Belastningsveileder</h3>
-                        <p class="text-[10px] text-slate-400">Spør om søvn, mat, drikke, belastning eller restitusjon</p>
+                        <p class="text-[10px] text-slate-400">Spør om søvn, belastning, sRPE eller restitusjon</p>
                     </div>
                 </div>
                 
                 <div class="space-y-3">
-                    <textarea id="aiQuestionInput" rows="2" placeholder="F.eks. Hva bør jeg spise før kamp? Eller er jeg for sliten i dag?" class="w-full bg-slate-950 border border-slate-800 rounded-2xl p-3 text-xs font-semibold text-white focus:border-emerald-500 focus:outline-none transition resize-none"></textarea>
+                    <textarea id="aiQuestionInput" rows="2" placeholder="F.eks. Er det lurt å trene i dag hvis jeg sov lite og er støl?" class="w-full bg-slate-950 border border-slate-800 rounded-2xl p-3 text-xs font-semibold text-white focus:border-emerald-500 focus:outline-none transition resize-none"></textarea>
                     <button type="button" onclick="askAiAgent()" class="w-full bg-slate-800 hover:bg-slate-700 text-emerald-400 font-extrabold py-2.5 rounded-2xl text-xs uppercase tracking-wider transition border border-slate-700 flex items-center justify-center gap-2">
                         <span>Spør Veilederen</span>
                     </button>
@@ -429,14 +429,11 @@
             loadRecentSessions(activePlayerToken);
         }
 
-        // Utvidet og trygg AI-agent som svarer på alt det du trengte
         function askAiAgent() {
-            const inputEl = document.getElementById('aiQuestionInput');
+            const input = document.getElementById('aiQuestionInput').value.trim();
             const respBox = document.getElementById('aiResponseBox');
             const respText = document.getElementById('aiResponseText');
-            if(!inputEl || !respBox || !respText) return;
 
-            const input = inputEl.value.trim();
             if (!input) {
                 alert("Vennligst skriv et spørsmål til veilederen.");
                 return;
@@ -447,20 +444,14 @@
 
             setTimeout(() => {
                 const q = input.toLowerCase();
-                let answer = "For å opprettholde en god utvikling uten overbelastning, bør du lytte til kroppen. Sørg for tilstrekkelig med søvn (8+ timer), riktig ernæring og nok væske etter treningsøkter.";
+                let answer = "For å opprettholde en god utvikling uten overbelastning, bør du lytte til kroppen. Sørg for tilstrekkelig med søvn (8+ timer) og få i deg nok væske og mat etter treningsøkter.";
 
-                if (q.includes("søvn") || q.includes("trøtt") || q.includes("sove") || q.includes("hvile")) {
-                    answer = "Søvn er din viktigste medisin for restitusjon! Hvis du har sovet mindre enn 7-8 timer, bør du ta det litt roligere på dagens økt eller fokusere ekstra på tøying og restitusjon i etterkant.";
-                } else if (q.includes("smerte") || q.includes("støl") || q.includes("vondt") || q.includes("skade") || q.includes("kjenner")) {
-                    answer = "Kjenner du på smerte eller ubehag, er det kroppens varsellampe. Stølhet går over med lett bevegelse, men skarp smerte i ledd eller muskler betyr at du bør avbryte eller tilpasse økten.";
-                } else if (q.includes("mat") || q.includes("spise") || q.includes("kosthold") || q.includes("energi")) {
-                    answer = "For å prestere på fotballbanen trenger du drivstoff! Spis et godt karbohydratrikt måltid 2-3 timer før trening, og få i deg litt raske karbohydrater og proteiner rett etter økten.";
-                } else if (q.includes("drikke") || q.includes("vann") || q.includes("tørst") || q.includes("væske")) {
-                    answer = "Husk væskebalansen! Drikk jevnlig med vann gjennom hele dagen, ikke bare mens du trener.";
-                } else if (q.includes("kamp") || q.includes("hard") || q.includes("tung") || q.includes("sliten")) {
-                    answer = "Sjekk ukesbelastningen din i oversikten her. Hvis sRPE-summen din er veldig høy denne uken, er det lurt å holde igjen på intensiteten på de lette øktene.";
-                } else if (q.includes("nervøs") || q.includes("kampdag") || q.includes("fokus")) {
-                    answer = "Det er helt normalt å være litt nervøs før kamp! Fokuser på det du kan kontrollere: egen innsats, positivt kroppsspråk og å støtte medspillerne dine.";
+                if (q.includes("søvn") || q.includes("trøtt") || q.includes("sove")) {
+                    answer = "God søvn er den aller viktigste faktoren for restitusjon! Hvis du har sovet lite, bør du vurdere en litt lettere økt eller ekstra fokus på hvile slik at du unngår overbelastning.";
+                } else if (q.includes("smerte") || q.includes("støl") || q.includes("vondt")) {
+                    answer = "Kjenner du på smerte eller ubehag, er det kroppens signal om å ta et steg tilbake. Lett aktivitet (bevegelse uten motstand) kan hjelpe mot stølhet, men skarp smerte krever hvile.";
+                } else if (q.includes("kamp") || q.includes("hard") || q.includes("trene i dag")) {
+                    answer = "Sjekk ukesbelastningen din i oversikten her. Hvis sRPE-summen din nærmer seg grensen, kan det være lurt å holde igjen på intensiteten på dagens økt.";
                 }
 
                 respText.innerText = answer;
@@ -678,21 +669,31 @@
                     firebase.initializeApp(firebaseConfig);
                     db = firebase.firestore();
 
+                    // Hent aktiviteter fra skyen og synkroniser til lokal enhet ved oppstart
                     db.collection("activities").get().then((querySnapshot) => {
                         let cloudSessions = [];
                         querySnapshot.forEach((doc) => { cloudSessions.push(doc.data()); });
-                        if(cloudSessions.length > 0) localStorage.setItem('fotball_load_sessions', JSON.stringify(cloudSessions));
-                    }).catch(e => {});
+                        if(cloudSessions.length > 0) {
+                            localStorage.setItem('fotball_load_sessions', JSON.stringify(cloudSessions));
+                        }
+                        initPlayerFromToken();
+                    }).catch(e => {
+                        initPlayerFromToken();
+                    });
 
                     db.collection("tokens").get().then((querySnapshot) => {
                         let cloudTokens = {};
                         querySnapshot.forEach((doc) => { cloudTokens[doc.id] = doc.data().playerName; });
-                        if(Object.keys(cloudTokens).length > 0) localStorage.setItem('fotball_load_tokens', JSON.stringify(cloudTokens));
+                        if(Object.keys(cloudTokens).length > 0) {
+                            localStorage.setItem('fotball_load_tokens', JSON.stringify(cloudTokens));
+                        }
                     }).catch(e => {});
+                } else {
+                    initPlayerFromToken();
                 }
-            } catch (e) {}
-
-            initPlayerFromToken();
+            } catch (e) {
+                initPlayerFromToken();
+            }
         });
     </script>
 </body>
