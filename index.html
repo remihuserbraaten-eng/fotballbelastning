@@ -329,7 +329,7 @@
 
         <!-- FOOTER / VERSJONSINFO -->
         <footer class="mt-8 pt-4 border-t border-slate-900 text-center text-[11px] text-slate-500 space-y-1">
-            <p class="font-semibold text-slate-400">Fotballbelastning <span class="text-emerald-400 font-mono">v1.0.0</span></p>
+            <p class="font-semibold text-slate-400">Fotballbelastning <span class="text-emerald-400 font-mono">v1.2.3</span></p>
             <p>Utviklet for FL Fart • Utvikler RAH</p>
             <p class="text-[10px] text-slate-600">Firebase & GitHub Pages</p>
         </footer>
@@ -337,7 +337,9 @@
     </main>
 
     <script>
-        const TRENER_PIN = "9482";
+        // Skjult PIN (Base64-kodet, ikke synlig i klartekst ved F12)
+        const ENCRYPTED_PIN = "OTQ4Mg=="; 
+
         let isTrenerUnlocked = false;
         let activePlayerName = "";
         let activePlayerToken = "";
@@ -387,15 +389,17 @@
         function verifyPin() {
             const input = document.getElementById('pinInput').value.trim();
             const err = document.getElementById('pinError');
-            if (input === TRENER_PIN) {
-                isTrenerUnlocked = true;
-                err.classList.add('hidden');
-                document.getElementById('tabTrenerPin').classList.add('hidden');
-                document.getElementById('tabTrener').classList.remove('hidden');
-                syncAndRefreshSquad();
-            } else {
-                err.classList.remove('hidden');
-            }
+            try {
+                if (btoa(input) === ENCRYPTED_PIN) {
+                    isTrenerUnlocked = true;
+                    err.classList.add('hidden');
+                    document.getElementById('tabTrenerPin').classList.add('hidden');
+                    document.getElementById('tabTrener').classList.remove('hidden');
+                    syncAndRefreshSquad();
+                    return;
+                }
+            } catch(e) {}
+            err.classList.remove('hidden');
         }
 
         function updateRpeDisplay(val) {
