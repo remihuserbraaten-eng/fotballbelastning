@@ -106,7 +106,7 @@
 
                     <div>
                         <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Aktivitetstype</label>
-                        <select id="activityType" class="w-full bg-slate-950 border border-slate-800 rounded-2xl p-3 text-xs font-semibold text-white focus:border-emerald-500 focus:outline-none transition">
+                        <select id="activityType" onchange="calculateLiveSrpe()" class="w-full bg-slate-950 border border-slate-800 rounded-2xl p-3 text-xs font-semibold text-white focus:border-emerald-500 focus:outline-none transition">
                             <option value="Klubbtrening">⚽ Klubbtrening</option>
                             <option value="Kamp">🔥 Kamp</option>
                             <option value="Egentrening">💪 Egentrening / Styrke</option>
@@ -238,12 +238,12 @@
                 </div>
             </div>
 
-            <!-- Om Fotballbelastning & Retningslinjer -->
+            <!-- Om Fotballbelastning, Retningslinjer & Personvern -->
             <div class="bg-slate-900/90 border border-slate-800/80 p-5 rounded-3xl shadow-xl backdrop-blur-sm space-y-3">
                 <button type="button" onclick="toggleInfoBox()" class="w-full flex justify-between items-center text-left">
                     <div class="flex items-center space-x-2">
                         <span class="text-emerald-400 text-sm">ℹ️</span>
-                        <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-300">Om Fotballbelastning &amp; Retningslinjer</h3>
+                        <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-300">Om Fotballbelastning &amp; Personvern</h3>
                     </div>
                     <span id="infoBoxToggleIcon" class="text-xs font-bold text-slate-400 bg-slate-800 px-2 py-1 rounded-lg border border-slate-700">Vis mer ▾</span>
                 </button>
@@ -257,6 +257,11 @@
                     <div class="p-3 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
                         <span class="font-extrabold text-[11px] uppercase tracking-wider text-emerald-400 block">💡 Hva er sRPE?</span>
                         <p class="text-[11px] text-slate-400">sRPE står for <em>Session Rating of Perceived Exertion</em>. Det regnes ut ved å multiplisere varigheten (minutter) med hvor hard økten føltes (1–10). Målet er å hjelpe deg og trenerne med å finne en trygg balanse mellom hard trening, kamper og god restitusjon.</p>
+                    </div>
+
+                    <div class="p-3 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
+                        <span class="font-extrabold text-[11px] uppercase tracking-wider text-teal-400 block">🔒 Personvernerklæring</span>
+                        <p class="text-[11px] text-slate-400">Appen lagrer treningsdata, søvn og dagsform knyttet til en unik utøverlenke (token). Ingen sensitive personopplysninger kreves eller lagres. Data synkroniseres til en sikker skydatabase (Firebase) for treneroversikt, samt lokalt på enheten for rask tilgang.</p>
                     </div>
 
                     <div class="p-3 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
@@ -345,8 +350,8 @@
 
         <!-- FOOTER / VERSJONSINFO -->
         <footer class="mt-8 pt-4 border-t border-slate-900 text-center text-[11px] text-slate-500 space-y-1">
-            <p class="font-semibold text-slate-400">Fotballbelastning <span class="text-emerald-400 font-mono">v1.3.3</span></p>
-            <p>Utviklet for FL Fart • Utvikler RAH</p>
+            <p class="font-semibold text-slate-400">Fotballbelastning <span class="text-emerald-400 font-mono">v1.3.9</span></p>
+            <p>Utviklet for intern bruk • Utvikler RAH</p>
             <p class="text-[10px] text-slate-600">Firebase & GitHub Pages</p>
         </footer>
 
@@ -541,8 +546,8 @@
             if (warningBox) warningBox.classList.add('hidden');
             
             btnSave.disabled = false;
-            btnSave.className = "flex-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold py-3.5 px-4 rounded-2xl text-xs uppercase tracking-wider transition shadow-lg shadow-emerald-500/20 active:scale-[0.98]";
-            btnSave.innerText = "Lagre for " + activePlayerName;
+            btnSave.className = "w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold py-3.5 px-4 rounded-2xl text-xs uppercase tracking-wider transition shadow-lg shadow-emerald-500/20 active:scale-[0.98]";
+            btnSave.innerText = "Lagre Økt for " + activePlayerName;
 
             loadRecentSessions(activePlayerToken);
         }
@@ -620,7 +625,7 @@
                     }
                 }
                 cancelEditing();
-                alert("Innsjekken din er oppdatert!");
+                alert("Økten din er oppdatert!");
             } else {
                 const newId = "session_" + Date.now();
                 const sessionObj = {
@@ -666,8 +671,8 @@
             document.getElementById('sleepHours').value = s.sleep || "";
             document.getElementById('bodyStatus').value = s.body || "Alt topp";
 
-            document.getElementById('formHeaderTitle').innerText = "Rediger Innsjekk";
-            document.getElementById('btnSave').innerText = "Oppdater";
+            document.getElementById('formHeaderTitle').innerText = "Rediger Økt";
+            document.getElementById('btnSave').innerText = "Oppdater Økt";
             document.getElementById('btnCancelEdit').classList.remove('hidden');
 
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -677,7 +682,7 @@
             document.getElementById('editingSessionId').value = "";
             document.getElementById('formHeaderTitle').innerText = "Registrer Økt";
             const btnSave = document.getElementById('btnSave');
-            btnSave.innerText = "Lagre for " + activePlayerName;
+            btnSave.innerText = "Lagre Økt for " + activePlayerName;
             document.getElementById('btnCancelEdit').classList.add('hidden');
             document.getElementById('duration').value = "";
             document.getElementById('sleepHours').value = "";
@@ -686,7 +691,7 @@
         }
 
         function deleteSession(id) {
-            if (!confirm("Er du sikker på at du vil slette denne registreringen?")) return;
+            if (!confirm("Er du sikker på at du vil slette denne økten?")) return;
 
             let sessions = getLocalSessions();
             sessions = sessions.filter(s => s.id !== id && s.timestamp !== id);
@@ -718,7 +723,6 @@
                 dayLabels.push(d.toLocaleDateString('no-NO', { weekday: 'short' }).slice(0, 2));
             }
 
-            // Beregn logg-streak (antall unike dager med registreringer)
             const uniqueLogDays = new Set();
             allSessions.forEach(s => {
                 if (s.date) uniqueLogDays.add(s.date);
@@ -771,7 +775,6 @@
             listEl.innerHTML = html || '<div class="text-xs text-slate-500 italic p-3 text-center bg-slate-950 rounded-2xl border border-slate-800">Ingen registreringer ennå.</div>';
             document.getElementById('weeklyTotalDisplay').innerText = totalWeeklySrpe + " sRPE";
             
-            // Oppdater logg-streak-badge
             const streakBadge = document.getElementById('playerStreakBadge');
             if (streakCount > 0) {
                 streakBadge.classList.remove('hidden');
