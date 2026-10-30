@@ -70,6 +70,15 @@
         <!-- SPILLER VISNING -->
         <div id="tabSpiller" class="space-y-5">
             
+            <!-- Dagens Fotball-Tips / Fun Fact Boks -->
+            <div class="bg-gradient-to-r from-emerald-950/80 to-teal-950/80 border border-emerald-500/30 p-4 rounded-3xl shadow-lg space-y-1.5">
+                <div class="flex items-center space-x-2">
+                    <span class="text-emerald-400 text-sm">💡</span>
+                    <h3 class="text-[11px] font-extrabold uppercase tracking-wider text-emerald-300">Dagens Fotballtips</h3>
+                </div>
+                <p id="dailyTipText" class="text-xs text-slate-200 font-medium leading-relaxed"></p>
+            </div>
+
             <!-- Registreringsskjema -->
             <div class="bg-slate-900/90 border border-slate-800/80 p-5 rounded-3xl shadow-xl backdrop-blur-sm space-y-4">
                 <div class="flex items-center justify-between border-b border-slate-800 pb-3">
@@ -91,7 +100,7 @@
                         </div>
                         <div>
                             <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Varighet (min)</label>
-                            <input type="number" id="duration" min="5" max="240" placeholder="f.eks 75" required oninput="calculateLiveSrpe()" class="w-full bg-slate-950 border border-slate-800 rounded-2xl p-3 text-xs font-semibold text-white focus:border-emerald-500 focus:outline-none transition">
+                            <input type="number" id="duration" min="0" max="240" placeholder="f.eks 75" required oninput="calculateLiveSrpe()" class="w-full bg-slate-950 border border-slate-800 rounded-2xl p-3 text-xs font-semibold text-white focus:border-emerald-500 focus:outline-none transition">
                         </div>
                     </div>
 
@@ -103,6 +112,7 @@
                             <option value="Egentrening">💪 Egentrening / Styrke</option>
                             <option value="Alternativ">🏃 Alternativ idrett</option>
                             <option value="Gym">🏫 Skole / Gym</option>
+                            <option value="💤 Hviledag / Rolig dag">💤 Hviledag / Rolig dag</option>
                         </select>
                     </div>
 
@@ -195,7 +205,13 @@
 
             <!-- Ukesstatus & Visuell Graf -->
             <div class="bg-slate-900/90 border border-slate-800/80 p-5 rounded-3xl shadow-xl backdrop-blur-sm space-y-4">
-                <h3 class="text-sm font-extrabold uppercase tracking-wider text-slate-300">Ukesstatus & Belastning</h3>
+                <div class="flex justify-between items-center">
+                    <h3 class="text-sm font-extrabold uppercase tracking-wider text-slate-300">Ukesstatus & Belastning</h3>
+                    <div id="playerStreakBadge" class="hidden text-[10px] font-black bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded-full">
+                        🔥 Logg-streak: 0 dager
+                    </div>
+                </div>
+
                 <div id="statusCard" class="p-4 rounded-2xl bg-slate-950 border border-slate-800 text-slate-200">
                     <div class="flex justify-between items-start mb-2">
                         <div>
@@ -329,8 +345,8 @@
 
         <!-- FOOTER / VERSJONSINFO -->
         <footer class="mt-8 pt-4 border-t border-slate-900 text-center text-[11px] text-slate-500 space-y-1">
-            <p class="font-semibold text-slate-400">Fotballbelastning <span class="text-emerald-400 font-mono">v1.2.4</span></p>
-            <p>Utviklet for intern bruk • Utvikler RAH</p>
+            <p class="font-semibold text-slate-400">Fotballbelastning <span class="text-emerald-400 font-mono">v1.3.3</span></p>
+            <p>Utviklet for FL Fart • Utvikler RAH</p>
             <p class="text-[10px] text-slate-600">Firebase & GitHub Pages</p>
         </footer>
 
@@ -344,6 +360,24 @@
         let activePlayerName = "";
         let activePlayerToken = "";
         let db = null;
+
+        // Daglige fotballtips som ruller tilfeldig
+        const footballTips = [
+            "💧 Husk å drikke vann regelmessig gjennom hele dagen – ikke bare rett før trening!",
+            "🍌 En banan eller litt havregryn 2 timer før kamp gir deg toppenergi utpå banen.",
+            "💤 God søvn (8-10 timer) er ditt beste våpen for å restituere raskere etter kamp.",
+            "⚽ Vær stolt av innsatsen din! Det finnes ingen 'feil' måte å kjenne på dagsformen.",
+            "🏃‍♂️ Lett bevegelighet og tøying dagen etter kamp hjelper stive bein til å bli myke igjen.",
+            "🛋️ Hviledager er ikke bortkastet tid – det er da beina faktisk vokser og blir raskere!"
+        ];
+
+        function loadDailyTip() {
+            const tipEl = document.getElementById('dailyTipText');
+            if (tipEl) {
+                const randomIndex = Math.floor(Math.random() * footballTips.length);
+                tipEl.innerText = footballTips[randomIndex];
+            }
+        }
 
         function byttTab(tab) {
             const tabSpiller = document.getElementById('tabSpiller');
@@ -413,6 +447,11 @@
         }
 
         function calculateLiveSrpe() {
+            const activity = document.getElementById('activityType').value;
+            if (activity.includes('Hviledag')) {
+                document.getElementById('calculatedSrpe').innerText = "0 sRPE";
+                return 0;
+            }
             const dur = parseInt(document.getElementById('duration').value) || 0;
             const rpe = parseInt(document.getElementById('rpeScore').value) || 0;
             const srpe = dur * rpe;
@@ -502,8 +541,8 @@
             if (warningBox) warningBox.classList.add('hidden');
             
             btnSave.disabled = false;
-            btnSave.className = "w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold py-3.5 px-4 rounded-2xl text-xs uppercase tracking-wider transition shadow-lg shadow-emerald-500/20 active:scale-[0.98]";
-            btnSave.innerText = "Lagre Økt for " + activePlayerName;
+            btnSave.className = "flex-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold py-3.5 px-4 rounded-2xl text-xs uppercase tracking-wider transition shadow-lg shadow-emerald-500/20 active:scale-[0.98]";
+            btnSave.innerText = "Lagre for " + activePlayerName;
 
             loadRecentSessions(activePlayerToken);
         }
@@ -553,12 +592,13 @@
 
             const editingId = document.getElementById('editingSessionId').value;
             const date = document.getElementById('sessionDate').value;
-            const duration = parseInt(document.getElementById('duration').value);
-            const rpe = parseInt(document.getElementById('rpeScore').value);
+            const duration = parseInt(document.getElementById('duration').value) || 0;
+            const rpe = parseInt(document.getElementById('rpeScore').value) || 0;
             const activity = document.getElementById('activityType').value;
             const sleep = document.getElementById('sleepHours').value;
             const body = document.getElementById('bodyStatus').value;
-            const srpe = duration * rpe;
+            
+            const srpe = activity.includes('Hviledag') ? 0 : (duration * rpe);
 
             let sessions = getLocalSessions();
 
@@ -580,7 +620,7 @@
                     }
                 }
                 cancelEditing();
-                alert("Økten din er oppdatert!");
+                alert("Innsjekken din er oppdatert!");
             } else {
                 const newId = "session_" + Date.now();
                 const sessionObj = {
@@ -602,7 +642,7 @@
                 if (db) {
                     db.collection("activities").doc(newId).set(sessionObj).catch(e => console.warn(e));
                 }
-                alert("Økten din er lagret!");
+                alert(activity.includes('Hviledag') ? "Hviledag registrert! 🌟 Streaken er opprettholdt." : "Økten din er lagret!");
             }
 
             saveAllLocalSessions(sessions);
@@ -619,15 +659,15 @@
 
             document.getElementById('editingSessionId').value = id;
             document.getElementById('sessionDate').value = s.date;
-            document.getElementById('duration').value = s.duration;
+            document.getElementById('duration').value = s.duration || 0;
             document.getElementById('activityType').value = s.activity;
-            document.getElementById('rpeScore').value = s.rpe;
-            updateRpeDisplay(s.rpe);
+            document.getElementById('rpeScore').value = s.rpe || 5;
+            updateRpeDisplay(s.rpe || 5);
             document.getElementById('sleepHours').value = s.sleep || "";
             document.getElementById('bodyStatus').value = s.body || "Alt topp";
 
-            document.getElementById('formHeaderTitle').innerText = "Rediger Økt";
-            document.getElementById('btnSave').innerText = "Oppdater Økt";
+            document.getElementById('formHeaderTitle').innerText = "Rediger Innsjekk";
+            document.getElementById('btnSave').innerText = "Oppdater";
             document.getElementById('btnCancelEdit').classList.remove('hidden');
 
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -637,7 +677,7 @@
             document.getElementById('editingSessionId').value = "";
             document.getElementById('formHeaderTitle').innerText = "Registrer Økt";
             const btnSave = document.getElementById('btnSave');
-            btnSave.innerText = "Lagre Økt for " + activePlayerName;
+            btnSave.innerText = "Lagre for " + activePlayerName;
             document.getElementById('btnCancelEdit').classList.add('hidden');
             document.getElementById('duration').value = "";
             document.getElementById('sleepHours').value = "";
@@ -646,7 +686,7 @@
         }
 
         function deleteSession(id) {
-            if (!confirm("Er du sikker på at du vil slette denne økten?")) return;
+            if (!confirm("Er du sikker på at du vil slette denne registreringen?")) return;
 
             let sessions = getLocalSessions();
             sessions = sessions.filter(s => s.id !== id && s.timestamp !== id);
@@ -678,6 +718,13 @@
                 dayLabels.push(d.toLocaleDateString('no-NO', { weekday: 'short' }).slice(0, 2));
             }
 
+            // Beregn logg-streak (antall unike dager med registreringer)
+            const uniqueLogDays = new Set();
+            allSessions.forEach(s => {
+                if (s.date) uniqueLogDays.add(s.date);
+            });
+            let streakCount = uniqueLogDays.size;
+
             allSessions.slice(-20).reverse().forEach(data => {
                 const sessionDate = new Date(data.date);
                 if (sessionDate >= sevenDaysAgo) {
@@ -696,6 +743,11 @@
                     extraInfo = `<span class="text-[10px] text-slate-400 block mt-0.5">Søvn: ${data.sleep || '--'}t | Form: ${data.body || '--'}</span>`;
                 }
 
+                let subText = `${data.date} (${data.duration} min × RPE ${data.rpe})`;
+                if (data.activity && data.activity.includes('Hviledag')) {
+                    subText = `${data.date} (Hviledag)`;
+                }
+
                 const sId = data.id || data.timestamp;
 
                 html += `
@@ -703,7 +755,7 @@
                         <div class="flex justify-between items-center">
                             <div>
                                 <span class="font-extrabold text-white">${data.activity}</span>
-                                <span class="text-slate-400 text-[11px] block">${data.date} (${data.duration} min × RPE ${data.rpe})</span>
+                                <span class="text-slate-400 text-[11px] block">${subText}</span>
                                 ${extraInfo}
                             </div>
                             <span class="font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-xl">${data.srpe} sRPE</span>
@@ -718,6 +770,16 @@
 
             listEl.innerHTML = html || '<div class="text-xs text-slate-500 italic p-3 text-center bg-slate-950 rounded-2xl border border-slate-800">Ingen registreringer ennå.</div>';
             document.getElementById('weeklyTotalDisplay').innerText = totalWeeklySrpe + " sRPE";
+            
+            // Oppdater logg-streak-badge
+            const streakBadge = document.getElementById('playerStreakBadge');
+            if (streakCount > 0) {
+                streakBadge.classList.remove('hidden');
+                streakBadge.innerText = `🔥 Logg-streak: ${streakCount} dager`;
+            } else {
+                streakBadge.classList.add('hidden');
+            }
+
             updateStatusCard(totalWeeklySrpe);
             renderWeeklyChart(dailyTotals, dayLabels);
         }
@@ -869,6 +931,7 @@
         }
 
         window.addEventListener('DOMContentLoaded', () => {
+            loadDailyTip();
             const dateInput = document.getElementById('sessionDate');
             if (dateInput) dateInput.valueAsDate = new Date();
 
