@@ -308,7 +308,7 @@
         </footer>
     </main>
 
-    <!-- FULLSTENDIG OG RENE JAVASCRIPT-BLOKK -->
+    <!-- FULLSTENDIG OG SIKRET JAVASCRIPT-BLOKK -->
     <script>
         let isTrenerUnlocked = false;
         let activePlayerName = "";
@@ -562,4 +562,90 @@
                 return;
             }
 
-            if (!window.firebase || !firebase.auth)
+            if (!window.firebase || !firebase.auth) {
+                alert("Firebase Auth er ikke lastet inn.");
+                return;
+            }
+
+            firebase.auth().signInWithEmailAndPassword(email, password)
+                .then(() => {
+                    isTrenerUnlocked = true;
+                    if (err) err.classList.add('hidden');
+                    const pinBox = document.getElementById('tabTrenerPin');
+                    const trenerBox = document.getElementById('tabTrener');
+                    if (pinBox) pinBox.classList.add('hidden');
+                    if (trenerBox) trenerBox.classList.remove('hidden');
+                    syncAndRefreshSquad();
+                })
+                .catch(() => {
+                    if (err) {
+                        err.innerText = "Feil e-post eller passord.";
+                        err.classList.remove('hidden');
+                    }
+                });
+        }
+
+        function updateRpeDisplay(val) {
+            const labels = { 1: "1 - Veldig lett", 2: "2 - Lett", 3: "3 - Moderat", 4: "4 - Middels +", 5: "5 - Middels", 6: "6 - Litt hard", 7: "7 - Hard", 8: "8 - Meget hard", 9: "9 - Svært anstrengende", 10: "10 - Maksimalt" };
+            const disp = document.getElementById('rpeValueDisplay');
+            if (disp) disp.innerText = labels[val] || val;
+            calculateLiveSrpe();
+        }
+
+        function calculateLiveSrpe() {
+            const actEl = document.getElementById('activityType');
+            const durEl = document.getElementById('duration');
+            const rpeEl = document.getElementById('rpeScore');
+            const calcEl = document.getElementById('calculatedSrpe');
+            if (!actEl || !durEl || !rpeEl || !calcEl) return 0;
+
+            const activity = actEl.value;
+            if (activity.includes('Hviledag')) {
+                calcEl.innerText = "0 sRPE";
+                return 0;
+            }
+            const dur = parseInt(durEl.value) || 0;
+            const rpe = parseInt(rpeEl.value) || 0;
+            const srpe = dur * rpe;
+            calcEl.innerText = srpe + " sRPE";
+            return srpe;
+        }
+
+        function getLocalSessions() {
+            try { return JSON.parse(localStorage.getItem('fotball_load_sessions') || '[]'); } catch(e) { return []; }
+        }
+
+        function saveAllLocalSessions(sessions) {
+            try { localStorage.setItem('fotball_load_sessions', JSON.stringify(sessions)); } catch(e) {}
+        }
+
+        function getLocalTokens() {
+            try { return JSON.parse(localStorage.getItem('fotball_load_tokens') || '{}'); } catch(e) { return {}; }
+        }
+
+        function saveLocalToken(token, name) {
+            const tokens = getLocalTokens();
+            tokens[token] = name;
+            try { localStorage.setItem('fotball_load_tokens', JSON.stringify(tokens)); } catch(e) {}
+        }
+
+        function generatePlayerToken() {
+            const nameInput = document.getElementById('newPlayerName').value.trim();
+            if (!nameInput) { alert("Skriv inn fornavn."); return; }
+            const randomToken = Math.random().toString(36).substring(2, 10);
+            const fullLink = window.location.origin + window.location.pathname + "?token=" + randomToken;
+            saveLocalToken(randomToken, nameInput);
+            if (db) { db.collection("tokens").doc(randomToken).set({ playerName: nameInput }).catch(() => {}); }
+            const out = document.getElementById('generatedLinkOutput');
+            const container = document.getElementById('generatedLinkContainer');
+            if (out) out.value = fullLink;
+            if (container) container.classList.remove('hidden');
+            document.getElementById('newPlayerName').value = "";
+            loadSquadOverview();
+        }
+
+        function copyGeneratedLink() {
+            const copyText = document.getElementById("generatedLinkOutput");
+            if (!copyText) return;
+            copyText.select();
+            navigator.clipboard.writeText(copyText.value);
