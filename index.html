@@ -315,6 +315,70 @@
         let activePlayerToken = "";
         let db = null;
 
+        function byttTab(tab) {
+            const tabSpiller = document.getElementById('tabSpiller');
+            const tabTrener = document.getElementById('tabTrener');
+            const tabTrenerPin = document.getElementById('tabTrenerPin');
+            const btnSpiller = document.getElementById('btnTabSpiller');
+            const btnTrener = document.getElementById('btnTabTrener');
+
+            if (!tabSpiller || !tabTrener || !tabTrenerPin) return;
+
+            if (tab === 'spiller') {
+                tabSpiller.classList.remove('hidden');
+                tabTrener.classList.add('hidden');
+                tabTrenerPin.classList.add('hidden');
+                if (btnSpiller) btnSpiller.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-500 text-slate-950 shadow-md transition-all";
+                if (btnTrener) btnTrener.className = "px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-all";
+            } else {
+                tabSpiller.classList.add('hidden');
+                if (btnTrener) btnTrener.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-500 text-slate-950 shadow-md transition-all";
+                if (btnSpiller) btnSpiller.className = "px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-all";
+
+                if (isTrenerUnlocked) {
+                    tabTrener.classList.remove('hidden');
+                    tabTrenerPin.classList.add('hidden');
+                    syncAndRefreshSquad();
+                } else {
+                    tabTrenerPin.classList.remove('hidden');
+                    tabTrener.classList.add('hidden');
+                }
+            }
+        }
+
+        function toggleInfoBox() {
+            const content = document.getElementById('infoBoxContent');
+            const icon = document.getElementById('infoBoxToggleIcon');
+            if (!content || !icon) return;
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                icon.innerText = "Lukk ▴";
+            } else {
+                content.classList.add('hidden');
+                icon.innerText = "Vis mer ▾";
+            }
+        }
+
+        function quickAiQuestion(qText) {
+            const input = document.getElementById('aiQuestionInput');
+            if (input) input.value = qText;
+            askAiAgent();
+        }
+
+        function askAiAgent() {
+            const input = document.getElementById('aiQuestionInput');
+            const respBox = document.getElementById('aiResponseBox');
+            const respText = document.getElementById('aiResponseText');
+            if (!input || !respBox || !respText) return;
+            const val = input.value.trim();
+            if (!val) { alert("Skriv et spørsmål."); return; }
+            respBox.classList.remove('hidden');
+            respText.innerText = "Tenker...";
+            setTimeout(() => {
+                respText.innerText = "For å opprettholde god utvikling uten overbelastning, lytt til kroppen, sørg for nok søvn (8+ timer) og god ernæring.";
+            }, 500);
+        }
+
         const footballTips = [
             "💧 Husk å drikke vann regelmessig gjennom hele dagen – ikke bare rett før trening!",
             "🍌 En banan eller litt havregryn 2 timer før kamp gir deg toppenergi utpå banen.",
@@ -505,50 +569,6 @@
             squadEl.innerHTML = html;
         }
 
-        function byttTab(tab) {
-            const tabSpiller = document.getElementById('tabSpiller');
-            const tabTrener = document.getElementById('tabTrener');
-            const tabTrenerPin = document.getElementById('tabTrenerPin');
-            const btnSpiller = document.getElementById('btnTabSpiller');
-            const btnTrener = document.getElementById('btnTabTrener');
-
-            if (!tabSpiller || !tabTrener || !tabTrenerPin) return;
-
-            if (tab === 'spiller') {
-                tabSpiller.classList.remove('hidden');
-                tabTrener.classList.add('hidden');
-                tabTrenerPin.classList.add('hidden');
-                if (btnSpiller) btnSpiller.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-500 text-slate-950 shadow-md transition-all";
-                if (btnTrener) btnTrener.className = "px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-all";
-            } else {
-                tabSpiller.classList.add('hidden');
-                if (btnTrener) btnTrener.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-500 text-slate-950 shadow-md transition-all";
-                if (btnSpiller) btnSpiller.className = "px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-all";
-
-                if (isTrenerUnlocked) {
-                    tabTrener.classList.remove('hidden');
-                    tabTrenerPin.classList.add('hidden');
-                    syncAndRefreshSquad();
-                } else {
-                    tabTrenerPin.classList.remove('hidden');
-                    tabTrener.classList.add('hidden');
-                }
-            }
-        }
-
-        function toggleInfoBox() {
-            const content = document.getElementById('infoBoxContent');
-            const icon = document.getElementById('infoBoxToggleIcon');
-            if (!content || !icon) return;
-            if (content.classList.contains('hidden')) {
-                content.classList.remove('hidden');
-                icon.innerText = "Lukk ▴";
-            } else {
-                content.classList.add('hidden');
-                icon.innerText = "Vis mer ▾";
-            }
-        }
-
         function loginCoach() {
             const email = document.getElementById('coachEmail').value.trim();
             const password = document.getElementById('coachPassword').value;
@@ -649,3 +669,136 @@
             if (!copyText) return;
             copyText.select();
             navigator.clipboard.writeText(copyText.value);
+            alert("Lenke kopiert!");
+        }
+
+        function initPlayerFromToken() {
+            const token = new URLSearchParams(window.location.search).get('token');
+            const btnSave = document.getElementById('btnSave');
+            const badgeHeader = document.getElementById('playerBadgeHeader');
+            const warningBox = document.getElementById('noTokenWarning');
+            if (!token) return;
+
+            const localTokens = getLocalTokens();
+            if (localTokens[token]) {
+                activePlayerName = localTokens[token];
+                activePlayerToken = token;
+                setupPlayerUI(badgeHeader, warningBox, btnSave);
+                return;
+            }
+
+            if (db) {
+                db.collection("tokens").doc(token).get().then((doc) => {
+                    if (doc.exists) {
+                        activePlayerName = doc.data().playerName;
+                        activePlayerToken = token;
+                        saveLocalToken(token, activePlayerName);
+                        setupPlayerUI(badgeHeader, warningBox, btnSave);
+                    }
+                }).catch(() => {});
+            }
+        }
+
+        function setupPlayerUI(badgeHeader, warningBox, btnSave) {
+            if (badgeHeader) {
+                badgeHeader.innerText = "Utøver: " + activePlayerName;
+                badgeHeader.className = "text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1 rounded-full";
+            }
+            if (warningBox) warningBox.classList.add('hidden');
+            if (btnSave) {
+                btnSave.disabled = false;
+                btnSave.className = "w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold py-3.5 px-4 rounded-2xl text-xs uppercase tracking-wider transition shadow-lg";
+                btnSave.innerText = "Lagre Økt for " + activePlayerName;
+            }
+            loadRecentSessions(activePlayerToken);
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            if (!activePlayerToken) { alert("Mangler utøverlenke."); return; }
+            const editingId = document.getElementById('editingSessionId').value;
+            const date = document.getElementById('sessionDate').value;
+            const duration = parseInt(document.getElementById('duration').value) || 0;
+            const rpe = parseInt(document.getElementById('rpeScore').value) || 0;
+            const activity = document.getElementById('activityType').value;
+            const sleep = document.getElementById('sleepHours').value;
+            const body = document.getElementById('bodyStatus').value;
+            const srpe = activity.includes('Hviledag') ? 0 : (duration * rpe);
+
+            let sessions = getLocalSessions();
+            if (editingId) {
+                const idx = sessions.findIndex(s => s.id === editingId || s.timestamp === editingId);
+                if (idx !== -1) {
+                    sessions[idx] = { ...sessions[idx], date, duration, rpe, activity, sleep, body, srpe };
+                    if (db) db.collection("activities").doc(editingId).update({ date, duration, rpe, activity, sleep, body, srpe }).catch(() => {});
+                }
+                cancelEditing();
+                alert("Oppdatert!");
+            } else {
+                const newId = "session_" + Date.now();
+                const sessionObj = { id: newId, playerToken: activePlayerToken, playerName: activePlayerName, date, duration, rpe, activity, sleep, body, srpe, timestamp: new Date().toISOString() };
+                sessions.push(sessionObj);
+                if (db) db.collection("activities").doc(newId).set(sessionObj).catch(() => {});
+                alert("Lagret!");
+            }
+            saveAllLocalSessions(sessions);
+            document.getElementById('duration').value = "";
+            document.getElementById('sleepHours').value = "";
+            calculateLiveSrpe();
+            loadRecentSessions(activePlayerToken);
+        }
+
+        function cancelEditing() {
+            const editId = document.getElementById('editingSessionId');
+            const title = document.getElementById('formHeaderTitle');
+            const btnSave = document.getElementById('btnSave');
+            const btnCancel = document.getElementById('btnCancelEdit');
+            const dur = document.getElementById('duration');
+            const sleep = document.getElementById('sleepHours');
+            const sDate = document.getElementById('sessionDate');
+
+            if (editId) editId.value = "";
+            if (title) title.innerText = "Registrer Økt";
+            if (btnSave && activePlayerName) btnSave.innerText = "Lagre Økt for " + activePlayerName;
+            if (btnCancel) btnCancel.classList.add('hidden');
+            if (dur) dur.value = "";
+            if (sleep) sleep.value = "";
+            if (sDate) sDate.valueAsDate = new Date();
+            calculateLiveSrpe();
+        }
+
+        // INITIERING VED SIDELASTING
+        window.addEventListener('DOMContentLoaded', () => {
+            loadDailyTip();
+            const verEl = document.getElementById('footerVersion');
+            if (verEl && typeof APP_CONFIG !== 'undefined') {
+                verEl.innerText = APP_CONFIG.version;
+            }
+            const dateInput = document.getElementById('sessionDate');
+            if (dateInput) dateInput.valueAsDate = new Date();
+
+            try {
+                if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.firebaseConfig.apiKey !== "DIN_API_KEY_HER" && typeof firebase !== 'undefined' && !firebase.apps.length) {
+                    firebase.initializeApp(APP_CONFIG.firebaseConfig);
+                    db = firebase.firestore();
+
+                    firebase.auth().onAuthStateChanged((user) => {
+                        if (user) isTrenerUnlocked = true;
+                    });
+
+                    db.collection("activities").get().then(snapshot => {
+                        let cloudSessions = [];
+                        snapshot.forEach(doc => { let d = doc.data(); d.id = doc.id; cloudSessions.push(d); });
+                        if(cloudSessions.length > 0) saveAllLocalSessions(cloudSessions);
+                        initPlayerFromToken();
+                    }).catch(() => initPlayerFromToken());
+                } else {
+                    initPlayerFromToken();
+                }
+            } catch (e) {
+                initPlayerFromToken();
+            }
+        });
+    </script>
+</body>
+</html>
