@@ -1,146 +1,190 @@
 <!DOCTYPE html>
-<html lang="no" class="dark">
+<html lang="no">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Fotballbelastning | Test – rediger økt</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>body{font-family:'Plus Jakarta Sans',sans-serif}</style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test – Rediger økt</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; }
+    body { max-width: 520px; margin: 0 auto; padding: 20px; background: #020617; color: #f8fafc; }
+    .card { margin: 12px 0; padding: 18px; border: 1px solid #334155; border-radius: 16px; background: #0f172a; }
+    label { display: block; margin: 10px 0 5px; color: #94a3b8; font-size: 12px; font-weight: 700; }
+    input, select, button { box-sizing: border-box; width: 100%; padding: 12px; border: 1px solid #334155; border-radius: 12px; background: #020617; color: white; }
+    input[type="range"] { padding: 4px; accent-color: #10b981; }
+    button { border: 0; margin-top: 12px; background: #10b981; color: #022c22; font-weight: 800; cursor: pointer; }
+    button.secondary { background: #334155; color: white; }
+    button.danger { background: #7f1d1d; color: #fecaca; }
+    .row { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; }
+    .row button { width: auto; margin: 0; padding: 8px 10px; }
+    .muted { color: #94a3b8; font-size: 12px; }
+    .warning { border: 1px solid #a16207; background: #422006; color: #fde68a; }
+  </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen p-4">
-  <main class="max-w-md mx-auto space-y-4">
-    <header class="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
-      <div class="text-xs font-black uppercase tracking-wider text-amber-300">Testmodus – ingen Firebase-endring</div>
-      <p class="mt-1 text-xs text-slate-300">Økter lagres bare i nettleseren på denne enheten.</p>
-    </header>
+<body>
+  <div class="card warning">
+    <strong>TESTMODUS</strong><br>
+    <span class="muted">Fiktiv deltaker: <strong>Testdeltaker</strong>. Ingen Firebase eller produksjonsdata.</span>
+  </div>
 
-    <section class="rounded-3xl border border-slate-800 bg-slate-900 p-5 space-y-4">
-      <h1 id="formTitle" class="text-sm font-extrabold uppercase tracking-wider text-slate-300">Registrer testøkt</h1>
-      <form id="sessionForm" class="space-y-4">
-        <input type="hidden" id="editingId" value="">
-        <div>
-          <label class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-400">Dato</label>
-          <input id="date" type="date" required class="w-full rounded-2xl border border-slate-800 bg-slate-950 p-3 text-xs text-white">
-        </div>
-        <div>
-          <label class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-400">Varighet (min)</label>
-          <input id="duration" type="number" min="0" max="240" required class="w-full rounded-2xl border border-slate-800 bg-slate-950 p-3 text-xs text-white">
-        </div>
-        <div>
-          <label class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-400">Aktivitet</label>
-          <select id="activity" class="w-full rounded-2xl border border-slate-800 bg-slate-950 p-3 text-xs text-white">
-            <option>Klubbtrening</option><option>Kamp</option><option>Egentrening</option><option>Alternativ</option><option>Gym</option><option>Hviledag / Rolig dag</option>
-          </select>
-        </div>
-        <div>
-          <label class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-400">RPE</label>
-          <input id="rpe" type="range" min="1" max="10" value="5" class="w-full accent-emerald-500">
-        </div>
-        <div class="flex gap-2">
-          <button type="button" id="cancelBtn" class="hidden w-1/3 rounded-2xl bg-slate-800 px-3 py-3.5 text-xs font-bold text-slate-300">Avbryt</button>
-          <button type="submit" id="saveBtn" class="flex-1 rounded-2xl bg-emerald-500 px-4 py-3.5 text-xs font-extrabold uppercase tracking-wider text-slate-950">Lagre testøkt</button>
-        </div>
-      </form>
-    </section>
+  <div class="card">
+    <h2 id="formTitle">Registrer testøkt</h2>
+    <form id="sessionForm">
+      <input type="hidden" id="editingId">
+      <label for="date">Dato</label>
+      <input id="date" type="date" required>
+      <label for="duration">Varighet (minutter)</label>
+      <input id="duration" type="number" min="1" max="240" required>
+      <label for="activity">Aktivitet</label>
+      <select id="activity">
+        <option>Klubbtrening</option>
+        <option>Kamp</option>
+        <option>Egentrening</option>
+        <option>Alternativ</option>
+        <option>Gym</option>
+        <option>Hviledag / Rolig dag</option>
+      </select>
+      <label for="rpe">RPE: <span id="rpeValue">5</span></label>
+      <input id="rpe" type="range" min="1" max="10" value="5">
+      <button id="saveButton" type="submit">Lagre testøkt</button>
+      <button id="cancelButton" type="button" class="secondary" hidden>Avbryt redigering</button>
+    </form>
+  </div>
 
-    <section class="rounded-3xl border border-slate-800 bg-slate-900 p-5 space-y-3">
-      <h2 class="text-sm font-extrabold uppercase tracking-wider text-slate-300">Siste testøkter</h2>
-      <div id="list" class="space-y-2"></div>
-    </section>
-  </main>
+  <div class="card">
+    <h2>Testøkter</h2>
+    <div id="sessionList" class="muted">Ingen økter enda.</div>
+  </div>
 
   <script>
-    const KEY = 'fotball_test_edit_sessions';
-    const getSessions = () => JSON.parse(localStorage.getItem(KEY) || '[]');
-    const saveSessions = sessions => localStorage.setItem(KEY, JSON.stringify(sessions));
+    const STORAGE_KEY = 'fotball_test_sessions';
+    const TEST_PLAYER = { token: 'test-fiktiv-deltaker', name: 'Testdeltaker' };
 
-    document.getElementById('date').valueAsDate = new Date();
+    const getSessions = () => {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+      catch (error) { return []; }
+    };
+
+    const saveSessions = (sessions) => {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+    };
+
+    const dateInput = document.getElementById('date');
+    const durationInput = document.getElementById('duration');
+    const activityInput = document.getElementById('activity');
+    const rpeInput = document.getElementById('rpe');
+    const rpeValue = document.getElementById('rpeValue');
+    const editingId = document.getElementById('editingId');
+    const formTitle = document.getElementById('formTitle');
+    const saveButton = document.getElementById('saveButton');
+    const cancelButton = document.getElementById('cancelButton');
+
+    dateInput.valueAsDate = new Date();
+
+    rpeInput.addEventListener('input', () => {
+      rpeValue.textContent = rpeInput.value;
+    });
 
     function resetForm() {
-      document.getElementById('editingId').value = '';
-      document.getElementById('formTitle').textContent = 'Registrer testøkt';
-      document.getElementById('saveBtn').textContent = 'Lagre testøkt';
-      document.getElementById('cancelBtn').classList.add('hidden');
-      document.getElementById('date').valueAsDate = new Date();
-      document.getElementById('duration').value = '';
-      document.getElementById('activity').selectedIndex = 0;
-      document.getElementById('rpe').value = 5;
+      editingId.value = '';
+      formTitle.textContent = 'Registrer testøkt';
+      saveButton.textContent = 'Lagre testøkt';
+      cancelButton.hidden = true;
+      dateInput.valueAsDate = new Date();
+      durationInput.value = '';
+      activityInput.value = 'Klubbtrening';
+      rpeInput.value = 5;
+      rpeValue.textContent = '5';
     }
 
-    window.startEdit = function(id) {
-      const session = getSessions().find(item => item.id === id);
+    window.editSession = function(id) {
+      const session = getSessions().find((item) => item.id === id);
       if (!session) return;
-      document.getElementById('editingId').value = id;
-      document.getElementById('formTitle').textContent = 'Rediger testøkt';
-      document.getElementById('saveBtn').textContent = 'Oppdater testøkt';
-      document.getElementById('cancelBtn').classList.remove('hidden');
-      document.getElementById('date').value = session.date;
-      document.getElementById('duration').value = session.duration;
-      document.getElementById('activity').value = session.activity;
-      document.getElementById('rpe').value = session.rpe;
-      window.scrollTo({top: 0, behavior: 'smooth'});
+
+      editingId.value = id;
+      formTitle.textContent = 'Rediger testøkt';
+      saveButton.textContent = 'Oppdater testøkt';
+      cancelButton.hidden = false;
+      dateInput.value = session.date;
+      durationInput.value = session.duration;
+      activityInput.value = session.activity;
+      rpeInput.value = session.rpe;
+      rpeValue.textContent = session.rpe;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     window.deleteSession = function(id) {
-      if (!confirm('Slette denne testøkten?')) return;
-      saveSessions(getSessions().filter(item => item.id !== id));
+      if (!confirm('Vil du slette denne testøkten?')) return;
+      saveSessions(getSessions().filter((item) => item.id !== id));
       resetForm();
-      render();
+      renderSessions();
     };
 
-    document.getElementById('cancelBtn').addEventListener('click', resetForm);
+    cancelButton.addEventListener('click', resetForm);
 
-    document.getElementById('sessionForm').addEventListener('submit', event => {
-      event.preventEvent;
-    });
-
-    document.getElementById('sessionForm').onsubmit = function(event) {
+    document.getElementById('sessionForm').addEventListener('submit', (event) => {
       event.preventDefault();
-      const editingId = document.getElementById('editingId').value;
-      const date = document.getElementById('date').value;
-      const duration = parseInt(document.getElementById('duration').value, 10);
-      const activity = document.getElementById('activity').value;
-      const rpe = parseInt(document.getElementById('rpe').value, 10);
-      const srpe = activity.includes('Hviledag') ? 0 : duration * rpe;
+
+      const date = dateInput.value;
+      const duration = Number(durationInput.value);
+      const activity = activityInput.value;
+      const rpe = Number(rpeInput.value);
+
+      if (!date || !duration) {
+        alert('Fyll ut dato og varighet.');
+        return;
+      }
+
+      const srpe = activity === 'Hviledag / Rolig dag' ? 0 : duration * rpe;
       let sessions = getSessions();
 
-      if (editingId) {
-        sessions = sessions.map(item => item.id === editingId
-          ? {...item, date, duration, activity, rpe, srpe}
+      if (editingId.value) {
+        sessions = sessions.map((item) => item.id === editingId.value
+          ? { ...item, date, duration, activity, rpe, srpe }
           : item);
       } else {
-        sessions.push({id:'test_' + Date.now(), date, duration, activity, rpe, srpe});
+        sessions.push({
+          id: 'test_' + Date.now(),
+          playerToken: TEST_PLAYER.token,
+          playerName: TEST_PLAYER.name,
+          date,
+          duration,
+          activity,
+          rpe,
+          srpe
+        });
       }
 
       saveSessions(sessions);
       resetForm();
-      render();
-    };
+      renderSessions();
+    });
 
-    function render() {
-      const list = document.getElementById('list');
-      const sessions = getSessions().sort((a,b) => b.date.localeCompare(a.date));
+    function renderSessions() {
+      const container = document.getElementById('sessionList');
+      const sessions = getSessions()
+        .filter((item) => item.playerToken === TEST_PLAYER.token)
+        .sort((a, b) => b.date.localeCompare(a.date));
+
       if (!sessions.length) {
-        list.innerHTML = '<div class="rounded-2xl border border-slate-800 bg-slate-950 p-3 text-center text-xs text-slate-500">Ingen testøkter ennå.</div>';
+        container.className = 'muted';
+        container.textContent = 'Ingen økter enda.';
         return;
       }
-      list.innerHTML = sessions.map(session => `
-        <div class="rounded-2xl border border-slate-800 bg-slate-950 p-3">
-          <div class="flex items-center justify-between gap-3">
-            <div>
-              <div class="text-xs font-bold text-white">${session.activity} (${session.duration} min)</div>
-              <div class="mt-1 text-[10px] text-slate-400">${session.date} • RPE ${session.rpe} • ${session.srpe} sRPE</div>
-            </div>
-            <div class="flex gap-1">
-              <button type="button" onclick="startEdit('${session.id}')" class="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2 py-1.5 text-[10px] font-bold text-emerald-400">Rediger</button>
-              <button type="button" onclick="deleteSession('${session.id}')" class="rounded-lg border border-red-500/20 bg-red-500/10 px-2 py-1.5 text-[10px] font-bold text-red-400">Slett</button>
-            </div>
+
+      container.className = '';
+      container.innerHTML = sessions.map((session) => `
+        <div class="card row">
+          <div>
+            <strong>${session.activity}</strong><br>
+            <span class="muted">${session.date} • ${session.duration} min • RPE ${session.rpe} • ${session.srpe} sRPE</span>
           </div>
-        </div>`).join('');
+          <button type="button" onclick="editSession('${session.id}')">Rediger</button>
+          <button type="button" class="danger" onclick="deleteSession('${session.id}')">Slett</button>
+        </div>
+      `).join('');
     }
 
-    render();
+    renderSessions();
   </script>
 </body>
 </html>
