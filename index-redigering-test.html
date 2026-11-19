@@ -3,188 +3,102 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Test – Rediger økt</title>
+  <title>Fotballbelastning – full testapp med øktredigering</title>
   <style>
-    :root { color-scheme: dark; font-family: system-ui, sans-serif; }
-    body { max-width: 520px; margin: 0 auto; padding: 20px; background: #020617; color: #f8fafc; }
-    .card { margin: 12px 0; padding: 18px; border: 1px solid #334155; border-radius: 16px; background: #0f172a; }
-    label { display: block; margin: 10px 0 5px; color: #94a3b8; font-size: 12px; font-weight: 700; }
-    input, select, button { box-sizing: border-box; width: 100%; padding: 12px; border: 1px solid #334155; border-radius: 12px; background: #020617; color: white; }
-    input[type="range"] { padding: 4px; accent-color: #10b981; }
-    button { border: 0; margin-top: 12px; background: #10b981; color: #022c22; font-weight: 800; cursor: pointer; }
-    button.secondary { background: #334155; color: white; }
-    button.danger { background: #7f1d1d; color: #fecaca; }
-    .row { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; }
-    .row button { width: auto; margin: 0; padding: 8px 10px; }
-    .muted { color: #94a3b8; font-size: 12px; }
-    .warning { border: 1px solid #a16207; background: #422006; color: #fde68a; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #020617; color: #e2e8f0; font: 14px system-ui, sans-serif; }
+    .notice { padding: 12px 16px; background: #422006; border-bottom: 1px solid #a16207; color: #fde68a; }
+    .notice strong { color: #fef3c7; }
+    .notice p { margin: 4px 0 0; }
+    iframe { display: block; width: 100%; height: calc(100vh - 76px); min-height: 700px; border: 0; background: #020617; }
   </style>
 </head>
 <body>
-  <div class="card warning">
-    <strong>TESTMODUS</strong><br>
-    <span class="muted">Fiktiv deltaker: <strong>Testdeltaker</strong>. Ingen Firebase eller produksjonsdata.</span>
-  </div>
-
-  <div class="card">
-    <h2 id="formTitle">Registrer testøkt</h2>
-    <form id="sessionForm">
-      <input type="hidden" id="editingId">
-      <label for="date">Dato</label>
-      <input id="date" type="date" required>
-      <label for="duration">Varighet (minutter)</label>
-      <input id="duration" type="number" min="1" max="240" required>
-      <label for="activity">Aktivitet</label>
-      <select id="activity">
-        <option>Klubbtrening</option>
-        <option>Kamp</option>
-        <option>Egentrening</option>
-        <option>Alternativ</option>
-        <option>Gym</option>
-        <option>Hviledag / Rolig dag</option>
-      </select>
-      <label for="rpe">RPE: <span id="rpeValue">5</span></label>
-      <input id="rpe" type="range" min="1" max="10" value="5">
-      <button id="saveButton" type="submit">Lagre testøkt</button>
-      <button id="cancelButton" type="button" class="secondary" hidden>Avbryt redigering</button>
-    </form>
-  </div>
-
-  <div class="card">
-    <h2>Testøkter</h2>
-    <div id="sessionList" class="muted">Ingen økter enda.</div>
-  </div>
+  <aside class="notice">
+    <strong>TESTMODUS – full app med fiktiv deltaker «Testdeltaker»</strong>
+    <p>Dette er hele appen. Testøkter bruker en lokal testtoken, ikke en ekte deltakerlenke. Endringer lagres bare i nettleseren; Firebase-skriving er slått av for testøkter.</p>
+  </aside>
+  <iframe id="app" title="Fotballbelastning testapp"></iframe>
 
   <script>
-    const STORAGE_KEY = 'fotball_test_sessions';
-    const TEST_PLAYER = { token: 'test-fiktiv-deltaker', name: 'Testdeltaker' };
-
-    const getSessions = () => {
-      try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
-      catch (error) { return []; }
-    };
-
-    const saveSessions = (sessions) => {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
-    };
-
-    const dateInput = document.getElementById('date');
-    const durationInput = document.getElementById('duration');
-    const activityInput = document.getElementById('activity');
-    const rpeInput = document.getElementById('rpe');
-    const rpeValue = document.getElementById('rpeValue');
-    const editingId = document.getElementById('editingId');
-    const formTitle = document.getElementById('formTitle');
-    const saveButton = document.getElementById('saveButton');
-    const cancelButton = document.getElementById('cancelButton');
-
-    dateInput.valueAsDate = new Date();
-
-    rpeInput.addEventListener('input', () => {
-      rpeValue.textContent = rpeInput.value;
-    });
-
-    function resetForm() {
-      editingId.value = '';
-      formTitle.textContent = 'Registrer testøkt';
-      saveButton.textContent = 'Lagre testøkt';
-      cancelButton.hidden = true;
-      dateInput.valueAsDate = new Date();
-      durationInput.value = '';
-      activityInput.value = 'Klubbtrening';
-      rpeInput.value = 5;
-      rpeValue.textContent = '5';
-    }
-
-    window.editSession = function(id) {
-      const session = getSessions().find((item) => item.id === id);
-      if (!session) return;
-
-      editingId.value = id;
-      formTitle.textContent = 'Rediger testøkt';
-      saveButton.textContent = 'Oppdater testøkt';
-      cancelButton.hidden = false;
-      dateInput.value = session.date;
-      durationInput.value = session.duration;
-      activityInput.value = session.activity;
-      rpeInput.value = session.rpe;
-      rpeValue.textContent = session.rpe;
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
-
-    window.deleteSession = function(id) {
-      if (!confirm('Vil du slette denne testøkten?')) return;
-      saveSessions(getSessions().filter((item) => item.id !== id));
-      resetForm();
-      renderSessions();
-    };
-
-    cancelButton.addEventListener('click', resetForm);
-
-    document.getElementById('sessionForm').addEventListener('submit', (event) => {
-      event.preventDefault();
-
-      const date = dateInput.value;
-      const duration = Number(durationInput.value);
-      const activity = activityInput.value;
-      const rpe = Number(rpeInput.value);
-
-      if (!date || !duration) {
-        alert('Fyll ut dato og varighet.');
-        return;
+    (() => {
+      const testToken = 'test-fiktiv-deltaker';
+      const tokenStorageKey = 'fotball_load_tokens';
+      try {
+        const tokens = JSON.parse(localStorage.getItem(tokenStorageKey) || '{}');
+        tokens[testToken] = 'Testdeltaker';
+        localStorage.setItem(tokenStorageKey, JSON.stringify(tokens));
+      } catch (error) {
+        localStorage.setItem(tokenStorageKey, JSON.stringify({ [testToken]: 'Testdeltaker' }));
       }
 
-      const srpe = activity === 'Hviledag / Rolig dag' ? 0 : duration * rpe;
-      let sessions = getSessions();
+      const frame = document.getElementById('app');
+      frame.src = './index.html?token=' + encodeURIComponent(testToken) + '&testMode=1';
 
-      if (editingId.value) {
-        sessions = sessions.map((item) => item.id === editingId.value
-          ? { ...item, date, duration, activity, rpe, srpe }
-          : item);
-      } else {
-        sessions.push({
-          id: 'test_' + Date.now(),
-          playerToken: TEST_PLAYER.token,
-          playerName: TEST_PLAYER.name,
-          date,
-          duration,
-          activity,
-          rpe,
-          srpe
-        });
-      }
+      frame.addEventListener('load', () => {
+        let appWindow;
+        let appDocument;
+        try {
+          appWindow = frame.contentWindow;
+          appDocument = frame.contentDocument;
+          // Confirm the iframe is same-origin before adding test-only controls.
+          void appDocument.body;
+        } catch (error) {
+          return;
+        }
 
-      saveSessions(sessions);
-      resetForm();
-      renderSessions();
-    });
+        const originalLoadRecentSessions = appWindow.loadRecentSessions;
+        if (typeof originalLoadRecentSessions !== 'function') return;
 
-    function renderSessions() {
-      const container = document.getElementById('sessionList');
-      const sessions = getSessions()
-        .filter((item) => item.playerToken === TEST_PLAYER.token)
-        .sort((a, b) => b.date.localeCompare(a.date));
+        function addEditButtons() {
+          const list = appDocument.getElementById('recentSessionsList');
+          if (!list) return;
 
-      if (!sessions.length) {
-        container.className = 'muted';
-        container.textContent = 'Ingen økter enda.';
-        return;
-      }
+          let sessions = [];
+          try {
+            sessions = JSON.parse(appWindow.localStorage.getItem('fotball_load_sessions') || '[]')
+              .filter(session => session.playerToken === testToken)
+              .sort((a, b) => new Date(b.date) - new Date(a.date));
+          } catch (error) {
+            return;
+          }
 
-      container.className = '';
-      container.innerHTML = sessions.map((session) => `
-        <div class="card row">
-          <div>
-            <strong>${session.activity}</strong><br>
-            <span class="muted">${session.date} • ${session.duration} min • RPE ${session.rpe} • ${session.srpe} sRPE</span>
-          </div>
-          <button type="button" onclick="editSession('${session.id}')">Rediger</button>
-          <button type="button" class="danger" onclick="deleteSession('${session.id}')">Slett</button>
-        </div>
-      `).join('');
-    }
+          Array.from(list.children).forEach((row, index) => {
+            const session = sessions[index];
+            if (!session || row.querySelector('[data-test-edit]')) return;
+            const button = appDocument.createElement('button');
+            button.type = 'button';
+            button.dataset.testEdit = 'true';
+            button.textContent = 'Rediger';
+            button.className = 'ml-2 shrink-0 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-bold text-emerald-300';
+            button.addEventListener('click', () => {
+              appDocument.getElementById('editingSessionId').value = session.id || session.timestamp;
+              appDocument.getElementById('sessionDate').value = session.date || '';
+              appDocument.getElementById('duration').value = session.duration ?? '';
+              appDocument.getElementById('activityType').value = session.activity || 'Klubbtrening';
+              appDocument.getElementById('rpeScore').value = session.rpe || 5;
+              appWindow.updateRpeDisplay(String(session.rpe || 5));
+              appDocument.getElementById('sleepHours').value = session.sleep || '';
+              appDocument.getElementById('bodyStatus').value = session.body || 'Alt topp';
+              appDocument.getElementById('formHeaderTitle').textContent = 'Rediger testøkt';
+              appDocument.getElementById('btnSave').textContent = 'Oppdater testøkt';
+              appDocument.getElementById('btnCancelEdit').classList.remove('hidden');
+              appDocument.getElementById('sessionForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+              appWindow.calculateLiveSrpe();
+            });
+            row.appendChild(button);
+          });
+        }
 
-    renderSessions();
+        appWindow.loadRecentSessions = function(token) {
+          originalLoadRecentSessions(token);
+          if (token === testToken) addEditButtons();
+        };
+
+        // Render once now; future app refreshes use the wrapped function above.
+        appWindow.loadRecentSessions(testToken);
+      });
+    })();
   </script>
 </body>
 </html>
