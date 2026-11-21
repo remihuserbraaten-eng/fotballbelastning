@@ -75,12 +75,17 @@
         <!-- SPILLER VISNING -->
         <div id="tabSpiller" class="space-y-5">
             
-            <div class="bg-gradient-to-r from-emerald-950/80 to-teal-950/80 border border-emerald-500/30 p-4 rounded-3xl shadow-lg space-y-1.5">
-                <div class="flex items-center space-x-2">
-                    <span class="text-emerald-400 text-sm">💡</span>
-                    <h3 class="text-[11px] font-extrabold uppercase tracking-wider text-emerald-300">Dagens Fotballtips</h3>
+            <div class="bg-gradient-to-r from-emerald-950/80 to-teal-950/80 border border-emerald-500/30 p-4 rounded-3xl shadow-lg">
+                <div class="flex items-center gap-3">
+                    <img src="nisse-fotball.jpg" alt="Nisse som spiller fotball" class="w-20 h-20 rounded-2xl object-cover border border-emerald-500/30 shrink-0">
+                    <div class="space-y-1.5 min-w-0">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-emerald-400 text-sm">💡</span>
+                            <h3 class="text-[11px] font-extrabold uppercase tracking-wider text-emerald-300">Dagens Fotballtips</h3>
+                        </div>
+                        <p id="dailyTipText" class="text-xs text-slate-200 font-medium leading-relaxed">Laster tips...</p>
+                    </div>
                 </div>
-                <p id="dailyTipText" class="text-xs text-slate-200 font-medium leading-relaxed">Laster tips...</p>
             </div>
 
             <div class="bg-slate-900/90 border border-slate-800/80 p-5 rounded-3xl shadow-xl backdrop-blur-sm space-y-4">
@@ -301,6 +306,7 @@
                     <button type="button" onclick="window.copyGeneratedLink()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold py-2 rounded-xl text-xs uppercase tracking-wider transition">Kopier Lenke</button>
                 </div>
             </div>
+            <button type="button" onclick="window.logoutCoach()" class="w-full bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold py-3 rounded-2xl text-xs uppercase tracking-wider border border-slate-800 transition">Logg ut</button>
         </div>
 
         <footer class="mt-8 pt-4 border-t border-slate-900 text-center text-[11px] text-slate-500 space-y-1">
@@ -418,6 +424,7 @@
                 }
                 if(chartContainer) chartContainer.innerHTML = '';
                 if(chartDaysLabel) chartDaysLabel.innerHTML = '';
+                updateLoggingStreak([]);
                 return;
             }
 
@@ -462,6 +469,7 @@
             });
             if(totalDisplay) totalDisplay.innerText = totalWeekly + " sRPE";
             if(minutesDisplay) minutesDisplay.innerText = totalMinutes + " min trening";
+            updateLoggingStreak(sessions);
 
             if (totalWeekly > maxWeekly) {
                 if(statusMsg) statusMsg.innerText = "⚠️ Høy belastning denne uken. Sørg for god hvile og restitusjon!";
@@ -594,6 +602,61 @@
             });
             squadEl.innerHTML = html;
         }
+
+        function calendarDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, "0");
+            const day = String(date.getDate()).padStart(2, "0");
+            return `${year}-${month}-${day}`;
+        }
+
+        function loggingStreak(sessions) {
+            const loggedDays = new Set(sessions.map(session => session.date).filter(Boolean));
+            const cursor = new Date();
+            cursor.setHours(0, 0, 0, 0);
+            if (!loggedDays.has(calendarDate(cursor))) {
+                cursor.setDate(cursor.getDate() - 1);
+                if (!loggedDays.has(calendarDate(cursor))) return 0;
+            }
+            let streak = 0;
+            while (loggedDays.has(calendarDate(cursor))) {
+                streak += 1;
+                cursor.setDate(cursor.getDate() - 1);
+            }
+            return streak;
+        }
+
+        function updateLoggingStreak(sessions) {
+            const badge = document.getElementById('playerStreakBadge');
+            if (!badge) return;
+            const streak = loggingStreak(sessions);
+            if (streak >= 2) {
+                badge.textContent = `🔥 Logg-streak: ${streak} dager`;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        window.logoutCoach = function() {
+            isTrenerUnlocked = false;
+            localStorage.removeItem('fotball_load_sessions');
+            localStorage.removeItem('fotball_load_tokens');
+            const password = document.getElementById('coachPassword');
+            const generated = document.getElementById('generatedLinkContainer');
+            const squad = document.getElementById('squadList');
+            const pinBox = document.getElementById('tabTrenerPin');
+            const trenerBox = document.getElementById('tabTrener');
+            if (password) password.value = "";
+            if (generated) generated.classList.add('hidden');
+            if (squad) squad.innerHTML = '<div class="text-xs text-slate-500 italic p-3 text-center bg-slate-950 rounded-2xl border border-slate-800">Laster utøvere...</div>';
+            if (trenerBox) trenerBox.classList.add('hidden');
+            if (pinBox) pinBox.classList.remove('hidden');
+            if (activePlayerToken) window.loadRecentSessions(activePlayerToken);
+            if (window.firebase && firebase.auth) {
+                firebase.auth().signOut().catch(() => {});
+            }
+        };
 
         window.loginCoach = function() {
             const email = document.getElementById('coachEmail').value.trim();
@@ -857,7 +920,7 @@
                     db = firebase.firestore();
 
                     firebase.auth().onAuthStateChanged((user) => {
-                        if (user) isTrenerUnlocked = true;
+                        isTrenerUnlocked = !!user;
                     });
 
                     db.collection("activities").get().then(snapshot => {

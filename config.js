@@ -1,5 +1,5 @@
 const APP_CONFIG = {
-    version: "v1.4.1",
+    version: "v1.4.2",
     defaultMaxWeekly: 1500,
     firebaseConfig: {
         apiKey: "AIzaSyAnXYmiJaonOdK2zp4-EJCzr7cVdQhk9SY",
