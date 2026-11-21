@@ -1,0 +1,15 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Utøver kan slå opp sin egen lenke. Liste og endring krever trenerinnlogging.
+    match /tokens/{tokenId} {
+      allow get: if true;
+      allow list, create, update, delete: if request.auth != null;
+    }
+
+    // Økter er bare for innlogget trener. Anonyme kall er allerede avvist i dag.
+    match /activities/{sessionId} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

@@ -652,7 +652,9 @@
         window.generatePlayerToken = function() {
             const nameInput = document.getElementById('newPlayerName').value.trim();
             if (!nameInput) { alert("Skriv inn fornavn."); return; }
-            const randomToken = Math.random().toString(36).substring(2, 10);
+            const bytes = new Uint8Array(16);
+            crypto.getRandomValues(bytes);
+            const randomToken = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
             const fullLink = window.location.origin + window.location.pathname + "?token=" + randomToken;
             saveLocalToken(randomToken, nameInput);
             if (db) { db.collection("tokens").doc(randomToken).set({ playerName: nameInput }).catch(() => {}); }
