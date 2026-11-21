@@ -196,6 +196,7 @@
                         <div>
                             <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">7-Dagers Ukesbelastning</span>
                             <div id="weeklyTotalDisplay" class="text-2xl font-black text-white tracking-tight">0 sRPE</div>
+                            <div id="weeklyMinutesDisplay" class="text-sm font-semibold text-slate-300 mt-1">0 min trening</div>
                         </div>
                         <span id="statusBadge" class="bg-slate-800 text-slate-300 text-[10px] font-bold px-3 py-1 rounded-full border border-slate-700">--</span>
                     </div>
@@ -405,9 +406,11 @@
             const maxWeekly = (typeof APP_CONFIG !== 'undefined' ? APP_CONFIG.defaultMaxWeekly : 1500);
             const sessions = getLocalSessions().filter(s => s.playerToken === token);
             
+            const minutesDisplay = document.getElementById('weeklyMinutesDisplay');
             if (sessions.length === 0) {
                 listEl.innerHTML = '<div class="text-xs text-slate-500 italic p-3 text-center bg-slate-950 rounded-2xl border border-slate-800/50">Ingen registreringer ennå.</div>';
                 if(totalDisplay) totalDisplay.innerText = "0 sRPE";
+                if(minutesDisplay) minutesDisplay.innerText = "0 min trening";
                 if(statusMsg) statusMsg.innerText = "Logg din første økt over for å komme i gang!";
                 if(statusBadge) {
                     statusBadge.className = "bg-slate-800 text-slate-300 text-[10px] font-bold px-3 py-1 rounded-full border border-slate-700";
@@ -419,27 +422,46 @@
             }
 
             sessions.sort((a,b) => new Date(b.date) - new Date(a.date));
-            let html = "";
             let totalWeekly = 0;
+            let totalMinutes = 0;
             const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+            listEl.replaceChildren();
 
             sessions.forEach(s => {
                 const sDate = new Date(s.date);
+                const isRest = String(s.activity || "").includes("Hviledag");
                 if (sDate >= sevenDaysAgo) {
                     totalWeekly += (s.srpe || 0);
+                    if (!isRest) totalMinutes += (Number(s.duration) || 0);
                 }
-                html += `
-                    <div class="flex justify-between items-center p-3 bg-slate-950 rounded-2xl border border-slate-800">
-                        <div>
-                            <span class="font-bold text-white block">${s.activity} (${s.duration} min)</span>
-                            <span class="text-[10px] text-slate-400">${s.date} • RPE: ${s.rpe} • Søvn: ${s.sleep || '--'}t</span>
-                        </div>
-                        <span class="font-black text-emerald-400 text-xs">${s.srpe} sRPE</span>
-                    </div>
-                `;
+
+                const row = document.createElement("div");
+                row.className = "flex justify-between items-center gap-3 p-3 bg-slate-950 rounded-2xl border border-slate-800";
+                const left = document.createElement("div");
+                const title = document.createElement("span");
+                title.className = "font-bold text-white block";
+                title.textContent = `${s.activity} (${s.duration} min)`;
+                const meta = document.createElement("span");
+                meta.className = "text-[10px] text-slate-400";
+                meta.textContent = `${s.date} • RPE: ${s.rpe} • Søvn: ${s.sleep || "--"}t`;
+                left.append(title, meta);
+
+                const right = document.createElement("div");
+                right.className = "flex items-center gap-2 shrink-0";
+                const srpe = document.createElement("span");
+                srpe.className = "font-black text-emerald-400 text-xs";
+                srpe.textContent = `${s.srpe} sRPE`;
+                const editBtn = document.createElement("button");
+                editBtn.type = "button";
+                editBtn.className = "text-[10px] font-bold uppercase tracking-wider text-slate-200 bg-slate-800 border border-slate-700 px-2.5 py-1.5 rounded-xl";
+                editBtn.textContent = "Endre";
+                editBtn.addEventListener("click", () => window.editSession(s.id || s.timestamp));
+                right.append(srpe, editBtn);
+                row.append(left, right);
+                listEl.append(row);
             });
-            listEl.innerHTML = html;
             if(totalDisplay) totalDisplay.innerText = totalWeekly + " sRPE";
+            if(minutesDisplay) minutesDisplay.innerText = totalMinutes + " min trening";
 
             if (totalWeekly > maxWeekly) {
                 if(statusMsg) statusMsg.innerText = "⚠️ Høy belastning denne uken. Sørg for god hvile og restitusjon!";
@@ -533,11 +555,14 @@
             const sessions = getLocalSessions();
             const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
             const playerStats = {};
-            tokenKeys.forEach(token => { playerStats[token] = { name: tokens[token], totalSrpe: 0, lastSleep: '--', lastBody: '--' }; });
+            tokenKeys.forEach(token => { playerStats[token] = { name: tokens[token], totalSrpe: 0, totalMinutes: 0, lastSleep: '--', lastBody: '--' }; });
 
             sessions.forEach(s => {
                 if (new Date(s.date) >= sevenDaysAgo && s.playerToken && playerStats[s.playerToken]) {
                     playerStats[s.playerToken].totalSrpe += (s.srpe || 0);
+                    if (!String(s.activity || "").includes("Hviledag")) {
+                        playerStats[s.playerToken].totalMinutes += (Number(s.duration) || 0);
+                    }
                     if(s.sleep) playerStats[s.playerToken].lastSleep = s.sleep + 't';
                     if(s.body) playerStats[s.playerToken].lastBody = s.body;
                 }
@@ -560,6 +585,7 @@
                             <div>${statusBadge}</div>
                         </div>
                         <div class="flex gap-4 pt-1 border-t border-slate-900 text-[11px] text-slate-400">
+                            <span>Tid: <strong class="text-slate-200">${p.totalMinutes} min</strong></span>
                             <span>💤 Søvn: <strong class="text-slate-200">${p.lastSleep}</strong></span>
                             <span>🩺 Form: <strong class="text-slate-200">${p.lastBody}</strong></span>
                         </div>
@@ -728,26 +754,72 @@
             const srpe = activity.includes('Hviledag') ? 0 : (duration * rpe);
 
             let sessions = getLocalSessions();
+            const finish = (message) => {
+                document.getElementById('duration').value = "";
+                document.getElementById('sleepHours').value = "";
+                window.calculateLiveSrpe();
+                window.loadRecentSessions(activePlayerToken);
+                alert(message);
+            };
+
             if (editingId) {
                 const idx = sessions.findIndex(s => s.id === editingId || s.timestamp === editingId);
                 if (idx !== -1) {
                     sessions[idx] = { ...sessions[idx], date, duration, rpe, activity, sleep, body, srpe };
-                    if (db) db.collection("activities").doc(editingId).update({ date, duration, rpe, activity, sleep, body, srpe }).catch(() => {});
                 }
+                saveAllLocalSessions(sessions);
                 window.cancelEditing();
-                alert("Oppdatert!");
-            } else {
-                const newId = "session_" + Date.now();
-                const sessionObj = { id: newId, playerToken: activePlayerToken, playerName: activePlayerName, date, duration, rpe, activity, sleep, body, srpe, timestamp: new Date().toISOString() };
-                sessions.push(sessionObj);
-                if (db) db.collection("activities").doc(newId).set(sessionObj).catch(() => {});
-                alert("Lagret!");
+                if (!db || idx === -1) {
+                    finish("Oppdatert!");
+                    return;
+                }
+                db.collection("activities").doc(editingId).update({ date, duration, rpe, activity, sleep, body, srpe })
+                    .then(() => finish("Oppdatert!"))
+                    .catch(() => finish("Oppdatert på denne telefonen, men Firebase avviste endringen."));
+                return;
             }
+
+            const newId = "session_" + Date.now();
+            const sessionObj = { id: newId, playerToken: activePlayerToken, playerName: activePlayerName, date, duration, rpe, activity, sleep, body, srpe, timestamp: new Date().toISOString() };
+            sessions.push(sessionObj);
             saveAllLocalSessions(sessions);
-            document.getElementById('duration').value = "";
-            document.getElementById('sleepHours').value = "";
-            window.calculateLiveSrpe();
-            window.loadRecentSessions(activePlayerToken);
+            if (!db) {
+                finish("Lagret!");
+                return;
+            }
+            db.collection("activities").doc(newId).set(sessionObj)
+                .then(() => finish("Lagret!"))
+                .catch(() => finish("Lagret på denne telefonen, men Firebase avviste økten."));
+        };
+
+        window.editSession = function(sessionId) {
+            const session = getLocalSessions().find(s => (s.id === sessionId || s.timestamp === sessionId) && s.playerToken === activePlayerToken);
+            if (!session) return;
+
+            const editId = document.getElementById('editingSessionId');
+            const title = document.getElementById('formHeaderTitle');
+            const btnSave = document.getElementById('btnSave');
+            const btnCancel = document.getElementById('btnCancelEdit');
+            const dateInput = document.getElementById('sessionDate');
+            const durationInput = document.getElementById('duration');
+            const activityInput = document.getElementById('activityType');
+            const rpeInput = document.getElementById('rpeScore');
+            const sleepInput = document.getElementById('sleepHours');
+            const bodyInput = document.getElementById('bodyStatus');
+
+            if (editId) editId.value = session.id || session.timestamp;
+            if (dateInput) dateInput.value = session.date || "";
+            if (durationInput) durationInput.value = session.duration ?? "";
+            if (activityInput) activityInput.value = session.activity || activityInput.value;
+            if (rpeInput) rpeInput.value = session.rpe || 5;
+            if (sleepInput) sleepInput.value = session.sleep || "";
+            if (bodyInput && session.body) bodyInput.value = session.body;
+            window.updateRpeDisplay(rpeInput ? rpeInput.value : 5);
+            if (title) title.innerText = "Endre Økt";
+            if (btnCancel) btnCancel.classList.remove('hidden');
+            if (btnSave) btnSave.innerText = "Oppdater økt";
+            const form = document.getElementById('sessionForm');
+            if (form) form.scrollIntoView({ behavior: 'smooth', block: 'start' });
         };
 
         window.cancelEditing = function() {

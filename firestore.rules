@@ -1,15 +1,64 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Utøver kan slå opp sin egen lenke. Liste og endring krever trenerinnlogging.
-    match /tokens/{tokenId} {
-      allow get: if true;
-      allow list, create, update, delete: if request.auth != null;
+    function signedIn() {
+      return request.auth != null;
     }
 
-    // Økter er bare for innlogget trener. Anonyme kall er allerede avvist i dag.
+    function sessionData() {
+      return request.resource.data;
+    }
+
+    function sessionShapeOk(sessionId) {
+      return sessionData().keys().hasAll(['activity', 'body', 'date', 'duration', 'id', 'playerName', 'playerToken', 'rpe', 'sleep', 'srpe', 'timestamp'])
+        && sessionData().activity is string
+        && sessionData().activity.size() > 0
+        && sessionData().activity.size() <= 80
+        && sessionData().body is string
+        && sessionData().body.size() <= 40
+        && sessionData().date is string
+        && sessionData().date.matches('\\d{4}-\\d{2}-\\d{2}')
+        && sessionData().duration is int
+        && sessionData().duration >= 0
+        && sessionData().duration <= 240
+        && sessionData().id is string
+        && sessionData().id == sessionId
+        && sessionData().playerName is string
+        && sessionData().playerName.size() > 0
+        && sessionData().playerName.size() <= 80
+        && sessionData().playerToken is string
+        && sessionData().playerToken.size() > 0
+        && sessionData().playerToken.size() <= 80
+        && sessionData().playerToken.matches('[A-Za-z0-9]+')
+        && sessionData().rpe is int
+        && sessionData().rpe >= 1
+        && sessionData().rpe <= 10
+        && sessionData().sleep is string
+        && sessionData().sleep.size() <= 10
+        && sessionData().srpe is int
+        && sessionData().timestamp is string
+        && sessionData().timestamp.size() <= 40
+        && (sessionData().activity.matches('.*Hviledag.*')
+          ? sessionData().srpe == 0
+          : sessionData().srpe == sessionData().duration * sessionData().rpe);
+    }
+
+    function knownPlayerToken() {
+      return exists(/databases/$(database)/documents/tokens/$(sessionData().playerToken));
+    }
+
+    match /tokens/{tokenId} {
+      allow get: if true;
+      allow list, create, update, delete: if signedIn();
+    }
+
     match /activities/{sessionId} {
-      allow read, write: if request.auth != null;
+      allow read, delete: if signedIn();
+      allow create: if signedIn() || (sessionShapeOk(sessionId) && knownPlayerToken());
+      allow update: if signedIn()
+        || (sessionShapeOk(sessionId)
+          && knownPlayerToken()
+          && resource.data.playerToken == sessionData().playerToken);
     }
   }
 }
