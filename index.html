@@ -255,7 +255,7 @@
                     </div>
                     <div class="p-3 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
                         <span class="font-extrabold text-[11px] uppercase tracking-wider text-teal-400 block">🔒 Personvernerklæring</span>
-                        <p class="text-[11px] text-slate-400">Appen lagrer treningsdata knyttet til en unik utøverlenke (token). Ingen sensitive personopplysninger lagres.</p>
+                        <p class="text-[11px] text-slate-400">Appen lagrer fornavn, treningsøkter, søvn, opplevd form og belastning, knyttet til utøverens personlige lenke. Utøveren ser sine egne økter. En innlogget trener ser troppen. Det lagres ikke etternavn, fødselsnummer eller e-post for utøveren.</p>
                     </div>
                 </div>
             </div>
@@ -304,6 +304,22 @@
                 <div id="generatedLinkContainer" class="hidden p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-xs space-y-2.5">
                     <input type="text" id="generatedLinkOutput" readonly class="w-full bg-slate-950 border border-emerald-500/30 p-2.5 rounded-xl text-[11px] font-mono text-emerald-200 select-all">
                     <button type="button" onclick="window.copyGeneratedLink()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold py-2 rounded-xl text-xs uppercase tracking-wider transition">Kopier Lenke</button>
+                </div>
+            </div>
+            <div class="bg-slate-900/90 border border-slate-800/80 p-5 rounded-3xl shadow-xl backdrop-blur-sm space-y-4">
+                <h3 class="text-sm font-extrabold uppercase tracking-wider text-slate-300 border-b border-slate-800 pb-3">Flytt siste 7 dager</h3>
+                <p class="text-xs text-slate-400 leading-relaxed">Velg den gamle lenken og den nye. Be deretter utøveren åpne den nye lenken på samme telefon.</p>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5" for="moveFromToken">Fra</label>
+                        <select id="moveFromToken" class="w-full bg-slate-950 border border-slate-800 rounded-2xl p-3 text-xs font-semibold text-white focus:border-emerald-500 focus:outline-none transition"></select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5" for="moveToToken">Til</label>
+                        <select id="moveToToken" class="w-full bg-slate-950 border border-slate-800 rounded-2xl p-3 text-xs font-semibold text-white focus:border-emerald-500 focus:outline-none transition"></select>
+                    </div>
+                    <button type="button" id="btnMoveHistory" onclick="window.moveRecentHistory()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold py-3.5 rounded-2xl text-xs uppercase tracking-wider transition">Flytt siste 7 dager</button>
+                    <p id="moveHistoryStatus" class="hidden text-xs text-emerald-300 leading-relaxed"></p>
                 </div>
             </div>
             <button type="button" onclick="window.logoutCoach()" class="w-full bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold py-3 rounded-2xl text-xs uppercase tracking-wider border border-slate-800 transition">Logg ut</button>
@@ -557,6 +573,7 @@
 
             if (tokenKeys.length === 0) {
                 squadEl.innerHTML = '<div class="text-xs text-slate-500 italic p-3 text-center bg-slate-950 rounded-2xl border border-slate-800">Ingen utøverlenker opprettet ennå.</div>';
+                fillMoveTokenSelects();
                 return;
             }
 
@@ -576,31 +593,96 @@
                 }
             });
 
-            let html = "";
+            const text = (className, value) => {
+                const el = document.createElement('span');
+                el.className = className;
+                el.textContent = value;
+                return el;
+            };
+            squadEl.replaceChildren();
             tokenKeys.forEach(token => {
                 const p = playerStats[token];
-                let statusBadge = p.totalSrpe > maxWeekly ? 
-                    `<span class="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-extrabold px-2 py-1 rounded-xl">Høy (${p.totalSrpe})</span>` :
-                    `<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-extrabold px-2 py-1 rounded-xl">Optimal (${p.totalSrpe})</span>`;
+                const high = p.totalSrpe > maxWeekly;
+                const card = document.createElement('div');
+                card.className = 'p-3.5 bg-slate-950 rounded-2xl border border-slate-800 text-xs space-y-2';
 
-                html += `
-                    <div class="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 text-xs space-y-2">
-                        <div class="flex justify-between items-center">
-                            <div>
-                                <span class="font-extrabold text-white text-sm block">${p.name}</span>
-                                <span class="text-[10px] font-mono text-slate-500">?token=${token}</span>
-                            </div>
-                            <div>${statusBadge}</div>
-                        </div>
-                        <div class="flex gap-4 pt-1 border-t border-slate-900 text-[11px] text-slate-400">
-                            <span>Tid: <strong class="text-slate-200">${p.totalMinutes} min</strong></span>
-                            <span>💤 Søvn: <strong class="text-slate-200">${p.lastSleep}</strong></span>
-                            <span>🩺 Form: <strong class="text-slate-200">${p.lastBody}</strong></span>
-                        </div>
-                    </div>
-                `;
+                const top = document.createElement('div');
+                top.className = 'flex justify-between items-center gap-3';
+                const identity = document.createElement('div');
+                identity.append(
+                    text('font-extrabold text-white text-sm block', p.name),
+                    text('text-[10px] font-mono text-slate-500', `?token=${token}`)
+                );
+                top.append(identity, text(
+                    high
+                        ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-extrabold px-2 py-1 rounded-xl'
+                        : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-extrabold px-2 py-1 rounded-xl',
+                    high ? `Høy (${p.totalSrpe})` : `Optimal (${p.totalSrpe})`
+                ));
+
+                const meta = document.createElement('div');
+                meta.className = 'flex gap-4 pt-1 border-t border-slate-900 text-[11px] text-slate-400';
+                meta.append(
+                    text('', `Tid: ${p.totalMinutes} min`),
+                    text('', `Søvn: ${p.lastSleep}`),
+                    text('', `Form: ${p.lastBody}`)
+                );
+                card.append(top, meta);
+                squadEl.append(card);
             });
-            squadEl.innerHTML = html;
+            fillMoveTokenSelects();
+        }
+
+        function fillMoveTokenSelects() {
+            const fromSelect = document.getElementById('moveFromToken');
+            const toSelect = document.getElementById('moveToToken');
+            if (!fromSelect || !toSelect) return;
+            const previousFrom = fromSelect.value;
+            const previousTo = toSelect.value;
+            const tokens = getLocalTokens();
+            fromSelect.replaceChildren();
+            toSelect.replaceChildren();
+
+            const addPlaceholder = (select) => {
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'Velg lenke';
+                select.append(option);
+            };
+            addPlaceholder(fromSelect);
+            addPlaceholder(toSelect);
+
+            Object.keys(tokens).forEach((token) => {
+                const label = `${tokens[token]} · ${token.slice(-4)}`;
+                [fromSelect, toSelect].forEach((select) => {
+                    const option = document.createElement('option');
+                    option.value = token;
+                    option.textContent = label;
+                    select.append(option);
+                });
+            });
+            if (previousFrom) fromSelect.value = previousFrom;
+            if (previousTo) toSelect.value = previousTo;
+        }
+
+        function isWithinLastSevenDays(dateValue) {
+            const parsed = new Date(dateValue);
+            if (Number.isNaN(parsed.getTime())) return false;
+            const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+            return parsed >= sevenDaysAgo;
+        }
+
+        function moveSessionsLocally(fromToken, toToken, playerName) {
+            let moved = 0;
+            const sessions = getLocalSessions().map((session) => {
+                if (session.playerToken === fromToken && isWithinLastSevenDays(session.date)) {
+                    moved += 1;
+                    return { ...session, playerToken: toToken, playerName: playerName || session.playerName };
+                }
+                return session;
+            });
+            if (moved > 0) saveAllLocalSessions(sessions);
+            return moved;
         }
 
         function calendarDate(date) {
@@ -763,32 +845,89 @@
             alert("Lenke kopiert!");
         };
 
-        function initPlayerFromToken() {
-            const token = new URLSearchParams(window.location.search).get('token');
-            const btnSave = document.getElementById('btnSave');
+        function activatePlayer(token, playerName, movedFrom) {
             const badgeHeader = document.getElementById('playerBadgeHeader');
             const warningBox = document.getElementById('noTokenWarning');
+            const btnSave = document.getElementById('btnSave');
+            moveSessionsLocally(movedFrom, token, playerName);
+            activePlayerName = playerName;
+            activePlayerToken = token;
+            saveLocalToken(token, playerName);
+            setupPlayerUI(badgeHeader, warningBox, btnSave);
+        }
+
+        function initPlayerFromToken() {
+            const token = new URLSearchParams(window.location.search).get('token');
             if (!token) return;
 
             const localTokens = getLocalTokens();
-            if (localTokens[token]) {
-                activePlayerName = localTokens[token];
-                activePlayerToken = token;
-                setupPlayerUI(badgeHeader, warningBox, btnSave);
-                return;
-            }
+            const useLocal = () => {
+                if (localTokens[token]) activatePlayer(token, localTokens[token], null);
+            };
 
             if (db) {
                 db.collection("tokens").doc(token).get().then((doc) => {
                     if (doc.exists) {
-                        activePlayerName = doc.data().playerName;
-                        activePlayerToken = token;
-                        saveLocalToken(token, activePlayerName);
-                        setupPlayerUI(badgeHeader, warningBox, btnSave);
+                        const data = doc.data() || {};
+                        activatePlayer(token, data.playerName || localTokens[token] || "Utøver", data.movedFrom || null);
+                    } else {
+                        useLocal();
                     }
-                }).catch(() => {});
+                }).catch(useLocal);
+                return;
             }
+            useLocal();
         }
+
+        window.moveRecentHistory = function() {
+            const fromToken = document.getElementById('moveFromToken')?.value || '';
+            const toToken = document.getElementById('moveToToken')?.value || '';
+            const status = document.getElementById('moveHistoryStatus');
+            const showStatus = (message) => {
+                if (!status) return;
+                status.textContent = message;
+                status.classList.remove('hidden');
+            };
+            const tokens = getLocalTokens();
+            if (!fromToken || !toToken) { showStatus('Velg både gammel og ny lenke.'); return; }
+            if (fromToken === toToken) { showStatus('Velg to ulike lenker.'); return; }
+            if (!tokens[fromToken] || !tokens[toToken]) { showStatus('Begge lenkene må finnes i troppen.'); return; }
+            if (!window.firebase || !firebase.auth || !firebase.auth().currentUser || !db) {
+                showStatus('Logg inn som trener før du flytter uken.');
+                return;
+            }
+
+            const playerName = tokens[toToken];
+            const movedLocal = moveSessionsLocally(fromToken, toToken, playerName);
+            const button = document.getElementById('btnMoveHistory');
+            if (button) button.disabled = true;
+
+            db.collection('tokens').doc(toToken).set({ playerName: playerName, movedFrom: fromToken }, { merge: true })
+                .then(() => db.collection('activities').get())
+                .then((snapshot) => {
+                    const batch = db.batch();
+                    let cloudCount = 0;
+                    snapshot.forEach((doc) => {
+                        const data = doc.data() || {};
+                        if (data.playerToken === fromToken && isWithinLastSevenDays(data.date)) {
+                            batch.update(doc.ref, { playerToken: toToken, playerName: playerName });
+                            cloudCount += 1;
+                        }
+                    });
+                    const commit = cloudCount > 0 ? batch.commit() : Promise.resolve();
+                    return commit.then(() => cloudCount);
+                })
+                .then((cloudCount) => {
+                    showStatus(`Flyttet ${cloudCount} økter i Firebase. ${movedLocal} lå også i denne nettleseren. Be utøveren åpne den nye lenken på samme telefon.`);
+                    loadSquadOverview();
+                })
+                .catch(() => {
+                    showStatus('Uken i denne nettleseren er flyttet, men Firebase avviste endringen. Bli stående innlogget og prøv igjen.');
+                })
+                .finally(() => {
+                    if (button) button.disabled = false;
+                });
+        };
 
         function setupPlayerUI(badgeHeader, warningBox, btnSave) {
             if (badgeHeader) {
