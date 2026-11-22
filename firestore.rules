@@ -1,8 +1,9 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function signedIn() {
-      return request.auth != null;
+    function isCoach() {
+      return request.auth != null
+        && request.auth.uid == "QtV1CQW7qAeup5lXgyYzfuJnLY93";
     }
 
     function sessionData() {
@@ -49,13 +50,13 @@ service cloud.firestore {
 
     match /tokens/{tokenId} {
       allow get: if true;
-      allow list, create, update, delete: if signedIn();
+      allow list, create, update, delete: if isCoach();
     }
 
     match /activities/{sessionId} {
-      allow read, delete: if signedIn();
-      allow create: if signedIn() || (sessionShapeOk(sessionId) && knownPlayerToken());
-      allow update: if signedIn()
+      allow read, delete: if isCoach();
+      allow create: if isCoach() || (sessionShapeOk(sessionId) && knownPlayerToken());
+      allow update: if isCoach()
         || (sessionShapeOk(sessionId)
           && knownPlayerToken()
           && resource.data.playerToken == sessionData().playerToken);
